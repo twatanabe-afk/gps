@@ -79,7 +79,7 @@
                         現在地を中央に自動追従
                     </span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="toggle-auto-follow" class="sr-only peer">
+                        <input type="checkbox" id="toggle-auto-follow" class="sr-only peer" checked>
                         <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                     </label>
                 </div>
@@ -108,7 +108,7 @@
                 <div class="pt-1">
                     <button id="btn-toggle-track-style" class="w-full py-1.5 px-2.5 bg-slate-900/90 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-xs text-slate-300 flex items-center justify-between transition group">
                         <span class="flex items-center gap-2">
-                            <span id="track-color-preview-dot" class="w-3 h-3 rounded-full border border-white/40 shadow-sm" style="background-color: #10b981;"></span>
+                            <span id="track-color-preview-dot" class="w-3 h-3 rounded-full border border-white/40 shadow-sm" style="background-color: #ef4444;"></span>
                             <span class="font-medium">軌跡の表示スタイル設定</span>
                         </span>
                         <i id="track-style-chevron" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 group-hover:text-slate-200 transition-transform duration-200"></i>
@@ -118,15 +118,15 @@
                         <div class="flex items-center justify-between">
                             <span class="text-[11px] text-slate-300 font-medium">線のカラー</span>
                             <div class="flex items-center space-x-2">
-                                <input type="color" id="input-track-color" value="#10b981" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 p-0">
-                                <span id="label-track-color" class="text-[11px] text-slate-400 font-mono uppercase">#10B981</span>
+                                <input type="color" id="input-track-color" value="#ef4444" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 p-0">
+                                <span id="label-track-color" class="text-[11px] text-slate-400 font-mono uppercase">#EF4444</span>
                             </div>
                         </div>
 
                         <!-- Preset Color Quick Buttons -->
                         <div class="flex items-center gap-1.5 pt-0.5 pb-1">
+                            <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-rose-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#ef4444" title="レッド"></button>
                             <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-emerald-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#10b981" title="エメラルド"></button>
-                            <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-rose-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#f43f5e" title="ローズレッド"></button>
                             <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-amber-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#f59e0b" title="アンバーオレンジ"></button>
                             <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-sky-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#0ea5e9" title="スカイブルー"></button>
                             <button type="button" class="preset-track-color w-5 h-5 rounded-full bg-purple-500 ring-1 ring-white/30 hover:scale-110 transition" data-color="#a855f7" title="パープル"></button>
@@ -134,13 +134,13 @@
                         </div>
 
                         <div class="flex items-center justify-between gap-2">
-                            <span class="text-[11px] text-slate-300 flex-shrink-0">線の太さ: <b id="label-track-weight" class="text-emerald-400">5px</b></span>
-                            <input type="range" id="input-track-weight" min="2" max="14" step="1" value="5" class="w-28 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                            <span class="text-[11px] text-slate-300 flex-shrink-0">線の太さ: <b id="label-track-weight" class="text-rose-400">10px</b></span>
+                            <input type="range" id="input-track-weight" min="2" max="14" step="1" value="10" class="w-28 accent-rose-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                         </div>
 
                         <div class="flex items-center justify-between gap-2">
-                            <span class="text-[11px] text-slate-300 flex-shrink-0">不透明度: <b id="label-track-opacity" class="text-emerald-400">85%</b></span>
-                            <input type="range" id="input-track-opacity" min="0.2" max="1" step="0.05" value="0.85" class="w-28 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                            <span class="text-[11px] text-slate-300 flex-shrink-0">不透明度: <b id="label-track-opacity" class="text-rose-400">85%</b></span>
+                            <input type="range" id="input-track-opacity" min="0.2" max="1" step="0.05" value="0.85" class="w-28 accent-rose-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                         </div>
                     </div>
                 </div>
@@ -296,21 +296,21 @@
 
             // Storage Keys & Constants
             const STORAGE_KEY_TRACK = 'gps_tracking_history_v3';
-            const STORAGE_KEY_TRACK_STYLE = 'gps_tracking_style_v1';
+            const STORAGE_KEY_TRACK_STYLE = 'gps_tracking_style_v2';
             const DEFAULT_LAT = 35.681236;
             const DEFAULT_LNG = 139.767125;
             const DEFAULT_ZOOM = 13;
 
-            // Track Style Settings with defaults
+            // Track Style Settings with defaults (Red, 10px)
             let trackStyle = {
-                color: '#10b981',
-                weight: 5,
+                color: '#ef4444',
+                weight: 10,
                 opacity: 0.85
             };
 
-            // Application State
+            // Application State (Auto Follow enabled by default)
             let trackingStatus = 'stopped'; // 'tracking' | 'paused' | 'stopped'
-            let autoFollowMode = false; // Auto center map on current position
+            let autoFollowMode = true; // Auto center map on current position (Default: ON)
             let watchId = null;
             let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp}]
             let totalDistanceMeters = 0;
@@ -937,6 +937,21 @@
 
             document.addEventListener('click', () => exportMenu.classList.add('hidden'));
 
+            // Helper to get formatted start timestamp for export filename (e.g. 20261006_082826)
+            function getTrackFormattedTimestamp() {
+                const startTime = (trackPoints.length > 0 && trackPoints[0].timestamp) 
+                    ? new Date(trackPoints[0].timestamp) 
+                    : new Date();
+                const pad = n => String(n).padStart(2, '0');
+                const yyyy = startTime.getFullYear();
+                const mm = pad(startTime.getMonth() + 1);
+                const dd = pad(startTime.getDate());
+                const hh = pad(startTime.getHours());
+                const min = pad(startTime.getMinutes());
+                const ss = pad(startTime.getSeconds());
+                return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
+            }
+
             // Export to GPX
             document.getElementById('btn-export-gpx').addEventListener('click', () => {
                 if (trackPoints.length === 0) {
@@ -944,9 +959,10 @@
                     return;
                 }
 
+                const timestampStr = getTrackFormattedTimestamp();
                 let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 gpx += `<gpx version="1.1" creator="GPS KML Navigator" xmlns="http://www.topografix.com/GPX/1/1">\n`;
-                gpx += `  <trk>\n    <name>Track_${new Date().toISOString()}</name>\n    <trkseg>\n`;
+                gpx += `  <trk>\n    <name>Track_${timestampStr}</name>\n    <trkseg>\n`;
 
                 trackPoints.forEach(p => {
                     const timeIso = new Date(p.timestamp).toISOString();
@@ -955,7 +971,7 @@
 
                 gpx += `    </trkseg>\n  </trk>\n</gpx>`;
 
-                downloadBlob(gpx, `track_${Date.now()}.gpx`, 'application/gpx+xml');
+                downloadBlob(gpx, `track_${timestampStr}.gpx`, 'application/gpx+xml');
             });
 
             // Export to KML
@@ -965,16 +981,17 @@
                     return;
                 }
 
+                const timestampStr = getTrackFormattedTimestamp();
                 const coords = trackPoints.map(p => `${p.lng},${p.lat},${p.altitude || 0}`).join(' ');
 
                 let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
-                kml += `  <Document>\n    <name>GPS Track Record</name>\n`;
-                kml += `    <Placemark>\n      <name>Recorded Track</name>\n`;
+                kml += `  <Document>\n    <name>GPS Track Record ${timestampStr}</name>\n`;
+                kml += `    <Placemark>\n      <name>Track_${timestampStr}</name>\n`;
                 kml += `      <LineString>\n        <coordinates>${coords}</coordinates>\n      </LineString>\n    </Placemark>\n`;
                 kml += `  </Document>\n</kml>`;
 
-                downloadBlob(kml, `track_${Date.now()}.kml`, 'application/vnd.google-earth.kml+xml');
+                downloadBlob(kml, `track_${timestampStr}.kml`, 'application/vnd.google-earth.kml+xml');
             });
 
             function downloadBlob(content, filename, contentType) {
@@ -1014,6 +1031,103 @@
                     Array.from(e.target.files).forEach(file => processUploadedFile(file));
                 }
             });
+
+            // Convert KML aabbggrr hex string to #rrggbb and opacity (0-1)
+            function kmlColorToHex(kmlColor) {
+                if (!kmlColor || typeof kmlColor !== 'string') return null;
+                const clean = kmlColor.trim().replace(/^#/, '');
+                if (clean.length === 8) {
+                    const a = parseInt(clean.substring(0, 2), 16) / 255;
+                    const b = clean.substring(2, 4);
+                    const g = clean.substring(4, 6);
+                    const r = clean.substring(6, 8);
+                    return {
+                        hex: `#${r}${g}${b}`.toLowerCase(),
+                        opacity: Math.max(0.1, parseFloat(a.toFixed(2)))
+                    };
+                } else if (clean.length === 6) {
+                    return { hex: `#${clean}`.toLowerCase(), opacity: 1 };
+                }
+                return null;
+            }
+
+            // Extract style declarations from KML DOM (<Style>, <StyleMap>)
+            function extractKmlStyleMap(kmlDom) {
+                const styles = {};
+                // First collect concrete Style elements
+                kmlDom.querySelectorAll('Style').forEach(styleEl => {
+                    const id = styleEl.getAttribute('id');
+                    let color = null;
+                    let opacity = null;
+                    let width = null;
+                    let fillColor = null;
+                    let fillOpacity = null;
+
+                    const lineStyle = styleEl.querySelector('LineStyle');
+                    if (lineStyle) {
+                        const colEl = lineStyle.querySelector('color');
+                        const widEl = lineStyle.querySelector('width');
+                        if (colEl) {
+                            const parsed = kmlColorToHex(colEl.textContent);
+                            if (parsed) {
+                                color = parsed.hex;
+                                opacity = parsed.opacity;
+                            }
+                        }
+                        if (widEl) {
+                            const w = parseFloat(widEl.textContent);
+                            if (!isNaN(w) && w > 0) width = w;
+                        }
+                    }
+
+                    const polyStyle = styleEl.querySelector('PolyStyle');
+                    if (polyStyle) {
+                        const fillColEl = polyStyle.querySelector('color');
+                        if (fillColEl) {
+                            const parsed = kmlColorToHex(fillColEl.textContent);
+                            if (parsed) {
+                                fillColor = parsed.hex;
+                                fillOpacity = parsed.opacity;
+                            }
+                        }
+                    }
+
+                    const item = { color, opacity, width, fillColor, fillOpacity };
+                    if (id) {
+                        styles['#' + id] = item;
+                        styles[id] = item;
+                    }
+                });
+
+                // Next resolve StyleMap pairs using standard DOM iteration
+                kmlDom.querySelectorAll('StyleMap').forEach(smEl => {
+                    const id = smEl.getAttribute('id');
+                    const pairs = smEl.querySelectorAll('Pair');
+                    let targetUrl = null;
+
+                    for (const pair of pairs) {
+                        const keyEl = pair.querySelector('key');
+                        const styleUrlEl = pair.querySelector('styleUrl');
+                        if (styleUrlEl) {
+                            const url = styleUrlEl.textContent.trim();
+                            if (!targetUrl) targetUrl = url;
+                            if (keyEl && keyEl.textContent.trim() === 'normal') {
+                                targetUrl = url;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (targetUrl && styles[targetUrl]) {
+                        if (id) {
+                            styles['#' + id] = styles[targetUrl];
+                            styles[id] = styles[targetUrl];
+                        }
+                    }
+                });
+
+                return styles;
+            }
 
             async function processUploadedFile(file) {
                 const fileName = file.name.toLowerCase();
@@ -1072,22 +1186,79 @@
                         return;
                     }
 
+                    // Extract custom styles defined in the KML DOM
+                    const customStyles = extractKmlStyleMap(kmlDom);
+
+                    // Determine default/primary style from features or KML definitions
+                    let detectedColor = null;
+                    let detectedWeight = null;
+                    let detectedOpacity = null;
+
+                    // Resolve style properties for any feature
+                    function resolveFeatureStyle(feature) {
+                        const props = feature.properties || {};
+                        let col = props.stroke || null;
+                        let wid = props['stroke-width'] ? parseFloat(props['stroke-width']) : null;
+                        let op = props['stroke-opacity'] ? parseFloat(props['stroke-opacity']) : null;
+                        let fCol = props.fill || null;
+                        let fOp = props['fill-opacity'] ? parseFloat(props['fill-opacity']) : null;
+
+                        const styleUrl = props.styleUrl;
+                        if (styleUrl && customStyles[styleUrl]) {
+                            const def = customStyles[styleUrl];
+                            if (!col && def.color) col = def.color;
+                            if (!wid && def.width) wid = def.width;
+                            if (op === null && def.opacity !== null) op = def.opacity;
+                            if (!fCol && def.fillColor) fCol = def.fillColor;
+                            if (fOp === null && def.fillOpacity !== null) fOp = def.fillOpacity;
+                        }
+
+                        return {
+                            color: col,
+                            weight: wid,
+                            opacity: op,
+                            fillColor: fCol || col,
+                            fillOpacity: fOp !== null ? fOp : (op !== null ? op * 0.5 : null)
+                        };
+                    }
+
+                    // Detect dominant style from first valid styled feature
+                    for (const feat of geojson.features) {
+                        const st = resolveFeatureStyle(feat);
+                        if (!detectedColor && st.color) detectedColor = st.color;
+                        if (!detectedWeight && st.weight) detectedWeight = Math.min(14, Math.max(2, Math.round(st.weight)));
+                        if (detectedOpacity === null && st.opacity !== null) detectedOpacity = st.opacity;
+                        if (detectedColor && detectedWeight && detectedOpacity !== null) break;
+                    }
+
+                    const initialColor = detectedColor || '#0ea5e9';
+                    const initialWeight = detectedWeight || 4;
+                    const initialOpacity = detectedOpacity !== null ? detectedOpacity : 0.85;
+
                     const geoJsonLayer = L.geoJSON(geojson, {
                         style: function(feature) {
+                            const st = resolveFeatureStyle(feature);
                             return {
-                                color: '#0ea5e9',
-                                weight: 4,
-                                opacity: 0.85
+                                color: st.color || initialColor,
+                                weight: st.weight || initialWeight,
+                                opacity: st.opacity !== null ? st.opacity : initialOpacity,
+                                fillColor: st.fillColor || st.color || initialColor,
+                                fillOpacity: st.fillOpacity !== null ? st.fillOpacity : (initialOpacity * 0.6)
                             };
                         },
                         pointToLayer: function(feature, latlng) {
+                            const st = resolveFeatureStyle(feature);
+                            const markerColor = st.color || initialColor;
+                            const markerOpacity = st.opacity !== null ? st.opacity : initialOpacity;
+                            const markerRadius = Math.max(5, Math.min(12, (st.weight || initialWeight) + 2));
+
                             return L.circleMarker(latlng, {
-                                radius: 6,
-                                fillColor: '#0ea5e9',
+                                radius: markerRadius,
+                                fillColor: markerColor,
                                 color: '#ffffff',
                                 weight: 2,
                                 opacity: 1,
-                                fillOpacity: 0.9
+                                fillOpacity: markerOpacity
                             });
                         },
                         onEachFeature: function(feature, layer) {
@@ -1109,9 +1280,9 @@
                         layer: geoJsonLayer, 
                         visible: true,
                         styleOpen: false,
-                        color: '#0ea5e9',
-                        weight: 4,
-                        opacity: 0.85
+                        color: initialColor,
+                        weight: initialWeight,
+                        opacity: initialOpacity
                     });
 
                     const bounds = geoJsonLayer.getBounds();
@@ -1120,7 +1291,7 @@
                     }
 
                     renderKmlLayersList();
-                    showToast(`${filename} を読み込みました`, "success");
+                    showToast(`${filename} を読み込みました（スタイル適用済）`, "success");
 
                 } catch (err) {
                     console.error("KML Processing Error:", err);
@@ -1287,6 +1458,9 @@
                     if (notify) showToast("現在地自動追従: OFF");
                 }
             }
+
+            // Set initial state for auto follow (default ON)
+            setAutoFollowMode(true, false);
 
             toggleAutoFollowSwitch.addEventListener('change', (e) => {
                 setAutoFollowMode(e.target.checked);
