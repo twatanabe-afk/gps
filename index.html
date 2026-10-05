@@ -50,8 +50,10 @@
                     <p class="text-xs text-slate-400">KML/KMZ 表示 & 軌跡保存</p>
                 </div>
             </div>
-            <button id="toggle-sidebar" class="hidden md:flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition">
-                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            <button id="toggle-sidebar" title="メニューを非表示" class="flex p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700/60 transition active:scale-95 items-center gap-1 text-xs">
+                <i data-lucide="chevron-up" class="w-4 h-4 md:hidden"></i>
+                <i data-lucide="chevron-left" class="w-4 h-4 hidden md:block"></i>
+                <span class="text-[11px] font-medium pr-0.5">閉じる</span>
             </button>
         </div>
 
@@ -68,6 +70,18 @@
                     <span id="tracking-badge" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-700 text-slate-300">
                         停止中
                     </span>
+                </div>
+
+                <!-- Auto-Follow (Centering) Toggle Switch inside Sidebar -->
+                <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-700/40">
+                    <span class="text-xs text-slate-300 font-medium flex items-center gap-2">
+                        <i data-lucide="navigation" class="w-4 h-4 text-emerald-400"></i>
+                        現在地を中央に自動追従
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-auto-follow" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
                 </div>
 
                 <!-- Stats Grid -->
@@ -238,6 +252,9 @@
 
         <!-- Floating Controls -->
         <div class="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+            <button id="btn-toggle-follow-map" title="現在地自動追従 (中央固定)" class="p-3 bg-slate-900/90 hover:bg-slate-800 text-slate-300 rounded-xl shadow-lg border border-slate-700/80 backdrop-blur transition active:scale-95 flex items-center justify-center">
+                <i data-lucide="navigation" class="w-5 h-5"></i>
+            </button>
             <button id="btn-locate" title="現在地にジャンプ" class="p-3 bg-slate-900/90 hover:bg-slate-800 text-slate-200 rounded-xl shadow-lg border border-slate-700/80 backdrop-blur transition active:scale-95">
                 <i data-lucide="crosshair" class="w-5 h-5"></i>
             </button>
@@ -293,6 +310,7 @@
 
             // Application State
             let trackingStatus = 'stopped'; // 'tracking' | 'paused' | 'stopped'
+            let autoFollowMode = false; // Auto center map on current position
             let watchId = null;
             let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp}]
             let totalDistanceMeters = 0;
@@ -719,6 +737,11 @@
 
                 renderTrackOnMap();
                 updateStatsUI(speed, accuracy);
+
+                // If auto-follow is active, center map smoothly on new coordinates
+                if (autoFollowMode) {
+                    map.panTo([lat, lng], { animate: true, duration: 0.5 });
+                }
             }
 
             function startDemoSimulation() {
@@ -1243,6 +1266,44 @@
                 renderKmlLayersList();
             });
 
+            const toggleAutoFollowSwitch = document.getElementById('toggle-auto-follow');
+            const btnToggleFollowMap = document.getElementById('btn-toggle-follow-map');
+
+            function setAutoFollowMode(enabled, notify = true) {
+                autoFollowMode = enabled;
+                toggleAutoFollowSwitch.checked = enabled;
+
+                if (enabled) {
+                    btnToggleFollowMap.className = "p-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg border border-emerald-400/80 backdrop-blur transition active:scale-95 flex items-center justify-center";
+                    if (notify) showToast("現在地自動追従: ON", "success");
+
+                    // Immediately center on current location if available
+                    if (trackPoints.length > 0) {
+                        const lastPt = trackPoints[trackPoints.length - 1];
+                        map.panTo([lastPt.lat, lastPt.lng], { animate: true });
+                    }
+                } else {
+                    btnToggleFollowMap.className = "p-3 bg-slate-900/90 hover:bg-slate-800 text-slate-300 rounded-xl shadow-lg border border-slate-700/80 backdrop-blur transition active:scale-95 flex items-center justify-center";
+                    if (notify) showToast("現在地自動追従: OFF");
+                }
+            }
+
+            toggleAutoFollowSwitch.addEventListener('change', (e) => {
+                setAutoFollowMode(e.target.checked);
+            });
+
+            btnToggleFollowMap.addEventListener('click', () => {
+                setAutoFollowMode(!autoFollowMode);
+            });
+
+            // Automatically turn off auto-follow if user manually drags or pans the map
+            map.on('dragstart', () => {
+                if (autoFollowMode) {
+                    setAutoFollowMode(false, false);
+                    showToast("手動操作により自動追従を一時解除しました");
+                }
+            });
+
             // Map Controls
             document.getElementById('btn-locate').addEventListener('click', () => {
                 if ("geolocation" in navigator) {
@@ -1287,11 +1348,7 @@
 
             function closeSidebar() {
                 isCollapsed = true;
-                sidebar.classList.add('md:-ml-96');
-                // On mobile screens, also hide it so map takes full space
-                if (window.innerWidth < 768) {
-                    sidebar.classList.add('hidden');
-                }
+                sidebar.classList.add('md:-ml-96', 'hidden');
                 btnShowSidebar.classList.remove('hidden');
                 btnShowSidebar.classList.add('flex');
                 setTimeout(() => map.invalidateSize(), 300);
