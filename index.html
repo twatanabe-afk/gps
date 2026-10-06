@@ -86,7 +86,7 @@
         .pulse-dot-red {
             background-color: #ef4444;
             box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            animation: pulse-red 1.6s infinite cubic-bezier(0.66, 0, 0, 1);
+            animation: pulse-red 1.6s infinite cubic-bezier(0.66, 0, 1);
         }
         @keyframes pulse-red {
             to { box-shadow: 0 0 0 13px rgba(239, 68, 68, 0); }
@@ -96,7 +96,7 @@
         .pulse-dot-blue {
             background-color: #3b82f6;
             box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-            animation: pulse-blue 1.6s infinite cubic-bezier(0.66, 0, 0, 1);
+            animation: pulse-blue 1.6s infinite cubic-bezier(0.66, 0, 1);
         }
         @keyframes pulse-blue {
             to { box-shadow: 0 0 0 13px rgba(59, 130, 246, 0); }
@@ -118,8 +118,8 @@
 
     <!-- Sidebar -->
     <aside id="sidebar" class="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col z-20 h-1/2 md:h-full transition-all duration-300 flex-shrink-0">
-        <!-- Header -->
-        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur">
+        <!-- Header (PC・タブレット時のみ表示、スマホ時は非表示にして貴重な縦画面領域を最大確保) -->
+        <div class="hidden md:flex p-4 border-b border-slate-800 items-center justify-between bg-slate-900/90 backdrop-blur">
             <div class="flex items-center space-x-2.5">
                 <div class="p-2 bg-emerald-600 rounded-xl text-white shadow-lg shadow-emerald-900/30">
                     <i data-lucide="map-pin" class="w-5 h-5"></i>
@@ -129,8 +129,8 @@
                     <p class="text-xs text-slate-400">KML/KMZ 表示 & 軌跡保存</p>
                 </div>
             </div>
-            <!-- タブレット・PC用：ヘッダー右上の閉じるボタン（スマホ時は非表示） -->
-            <button id="toggle-sidebar" title="メニューを非表示" class="hidden md:flex p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700/60 transition active:scale-95 items-center gap-1 text-xs">
+            <!-- タブレット・PC用：ヘッダー右上の閉じるボタン -->
+            <button id="toggle-sidebar" title="メニューを非表示" class="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700/60 transition active:scale-95 flex items-center gap-1 text-xs">
                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
                 <span class="text-[11px] font-medium pr-0.5">閉じる</span>
             </button>
@@ -317,16 +317,16 @@
 
         <!-- Version Footer & Mobile Close Button -->
         <div class="px-3 py-2 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 font-mono select-none">
-            <!-- スマホ用：メニュー左下の閉じるボタン（親指で押しやすい配置） -->
+            <!-- スマホ用：メニュー左下の閉じるボタン（上向き矢印 chevron-up で押しやすい配置） -->
             <button id="toggle-sidebar-mobile" title="メニューを非表示" class="md:hidden flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 active:scale-95 text-slate-200 border border-slate-700/80 rounded-xl font-sans text-xs shadow-md transition">
-                <i data-lucide="chevron-down" class="w-4 h-4 text-emerald-400"></i>
+                <i data-lucide="chevron-up" class="w-4 h-4 text-emerald-400"></i>
                 <span class="font-semibold">メニューを閉じる</span>
             </button>
             <div class="hidden md:flex items-center gap-1">
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.06-1335</span>
+            <span>v2026.10.06-1345</span>
         </div>
     </aside>
 
