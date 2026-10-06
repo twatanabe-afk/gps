@@ -4,6 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPS トラッカー</title>
+    <!-- Apple Touch Icon & Favicon (メニューと同じ緑色ピンアイコンを動的生成) -->
+    <link rel="apple-touch-icon" id="apple-touch-icon" sizes="180x180" href="">
+    <link rel="icon" type="image/png" id="app-favicon" href="">
+    <script>
+        (function() {
+            try {
+                // 180x180 の高精細キャンバスで iOS ホーム画面用アイコンを即時生成
+                const canvas = document.createElement('canvas');
+                canvas.width = 180;
+                canvas.height = 180;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    // 背景グラデーション（メニューと同じエメラルドグリーン）
+                    const grad = ctx.createLinearGradient(0, 0, 180, 180);
+                    grad.addColorStop(0, '#10b981'); // emerald-500
+                    grad.addColorStop(1, '#047857'); // emerald-700
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, 180, 180);
+
+                    // 中央にLucideと同じ白いマップピンを描画
+                    ctx.save();
+                    ctx.translate(90, 86);
+                    ctx.scale(4.2, 4.2);
+                    ctx.translate(-12, -12);
+
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.fillStyle = 'transparent';
+
+                    // ピン外枠パス
+                    const pinPath = new Path2D('M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z');
+                    ctx.stroke(pinPath);
+
+                    // ピン中央の円
+                    ctx.beginPath();
+                    ctx.arc(12, 10, 3, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.restore();
+
+                    const iconData = canvas.toDataURL('image/png');
+                    const appleIcon = document.getElementById('apple-touch-icon');
+                    if (appleIcon) appleIcon.href = iconData;
+                    const favicon = document.getElementById('app-favicon');
+                    if (favicon) favicon.href = iconData;
+                }
+            } catch (e) {
+                console.error("Failed to generate apple touch icon", e);
+            }
+        })();
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS & JS -->
@@ -245,7 +299,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 build
             </span>
-            <span>v2026.10.06-0941</span>
+            <span>v2026.10.06-0945</span>
         </div>
     </aside>
 
