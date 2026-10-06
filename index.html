@@ -273,22 +273,19 @@
         <!-- Footer / Map Tile Controls -->
         <div class="p-3 border-t border-slate-800 bg-slate-900/90 text-xs text-slate-400 flex justify-between items-center">
             <span class="flex items-center gap-1.5">
-                <i data-lucide="layers" class="w-3.5 h-3.5"></i> 背景地図（無料）
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i> 背景地図（登録・キー不要）
             </span>
             <select id="tile-selector" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
-                <optgroup label="国土地理院 (完全無料)">
-                    <option value="gsi-std">国土地理院 標準地図</option>
+                <optgroup label="国土地理院 (完全無料・API不要)">
                     <option value="gsi-pale" selected>国土地理院 淡色地図</option>
+                    <option value="gsi-std">国土地理院 標準地図</option>
                     <option value="gsi-photo">国土地理院 航空写真</option>
+                    <option value="gsi-blank">国土地理院 白地図</option>
                 </optgroup>
-                <optgroup label="OpenStreetMap系">
+                <optgroup label="オープンマップ (完全無料・API不要)">
                     <option value="osm">OpenStreetMap (標準)</option>
                     <option value="opentopo">OpenTopoMap (地形図)</option>
-                </optgroup>
-                <optgroup label="CartoDB / Esri">
-                    <option value="carto-dark">CartoDB Dark (ダーク)</option>
-                    <option value="carto-light">CartoDB Positron (ライト)</option>
-                    <option value="esri-sat">Esri World Imagery (衛星)</option>
+                    <option value="esri-sat">Esri World Imagery (衛星写真)</option>
                 </optgroup>
             </select>
         </div>
@@ -299,7 +296,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 build
             </span>
-            <span>v2026.10.06-0945</span>
+            <span>v2026.10.06-0956</span>
         </div>
     </aside>
 
@@ -415,14 +412,14 @@
             const map = L.map('map', { zoomControl: false }).setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // Completely Free Map Background Layers
+            // Completely Free & Keyless Map Background Layers
             const tileLayers = {
-                // 国土地理院 (完全に無料で高精度)
-                'gsi-std': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+                // 国土地理院 (日本国内・完全無料で高精度・APIキー不要)
+                'gsi-pale': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
                     maxZoom: 18
                 }),
-                'gsi-pale': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+                'gsi-std': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
                     maxZoom: 18
                 }),
@@ -430,7 +427,11 @@
                     attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
                     maxZoom: 18
                 }),
-                // OpenStreetMap & OpenTopoMap
+                'gsi-blank': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
+                    maxZoom: 18
+                }),
+                // OpenStreetMap & OpenTopoMap (APIキー不要)
                 'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
@@ -439,16 +440,7 @@
                     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>)',
                     maxZoom: 17
                 }),
-                // CartoDB
-                'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-                    maxZoom: 19
-                }),
-                'carto-light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-                    maxZoom: 19
-                }),
-                // Esri World Imagery
+                // Esri World Imagery (無償公開タイル・APIキー不要)
                 'esri-sat': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     attribution: 'Tiles &copy; Esri',
                     maxZoom: 18
