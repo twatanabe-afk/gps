@@ -178,16 +178,16 @@
                     </div>
                 </div>
 
-                <!-- Smart GPX Import (Open GPX Tracker 連動) - labelタグで直接ラップしiOSのダイアログブロック・グレーアウトを完全防止 -->
+                <!-- Smart GPX Import (Open GPX Tracker 連動) - 既存の軌跡を残して追加 -->
                 <div class="pt-0.5">
                     <label for="gpx-direct-input" class="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-950/80 via-teal-950/80 to-slate-900 border border-emerald-500/60 hover:border-emerald-400 rounded-xl text-xs text-emerald-200 hover:text-white font-medium transition active:scale-[0.98] flex items-center justify-between shadow-sm group cursor-pointer select-none">
                         <span class="flex items-center gap-2.5">
                             <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
-                                <i data-lucide="file-input" class="w-4 h-4"></i>
+                                <i data-lucide="file-plus-2" class="w-4 h-4"></i>
                             </span>
                             <span class="font-semibold text-xs text-left">
                                 GPXログを取り込む
-                                <span class="block text-[10px] text-slate-400 font-normal">Open GPX Trackerの記録を反映</span>
+                                <span class="block text-[10px] text-slate-400 font-normal">Open GPX Trackerの記録を軌跡に追加</span>
                             </span>
                         </span>
                         <span class="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 rounded-md font-mono border border-emerald-500/30">
@@ -343,7 +343,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.06-1420</span>
+            <span>v2026.10.06-1435</span>
         </div>
     </aside>
 
@@ -1109,7 +1109,7 @@
             }
 
             // ==========================================
-            // スマート GPX インポート & ログ解析機能
+            // スマート GPX インポート & ログ追加（マージ）機能
             // ==========================================
             const gpxDirectInput = document.getElementById('gpx-direct-input');
 
@@ -1127,7 +1127,7 @@
                 }
             });
 
-            // GPXファイルを解析し、自作アプリの「軌跡データ」として完全に復元・ダッシュボード連携
+            // GPXファイルを解析し、既存の軌跡データを保持したまま追加（マージ）
             async function importGpxAsActiveTrack(file) {
                 try {
                     const text = await file.text();
@@ -1145,14 +1145,8 @@
                         return;
                     }
 
-                    // 既存のトラックがある場合は上書き確認
-                    if (trackPoints.length > 0) {
-                        showCustomConfirm(`現在表示中の軌跡を、Open GPX Tracker のデータ (${trkpts.length}点) で置き換えますか？`, () => {
-                            applyGpxPointsToTrack(trkpts, file.name);
-                        });
-                    } else {
-                        applyGpxPointsToTrack(trkpts, file.name);
-                    }
+                    // 既存の軌跡データを消さずにそのまま追加
+                    applyGpxPointsToTrack(trkpts, file.name);
 
                 } catch (err) {
                     console.error("GPX Import Error:", err);
@@ -1162,12 +1156,12 @@
 
             function applyGpxPointsToTrack(trkpts, filename) {
                 const newPoints = [];
-                let calcDist = 0;
-                let calcMaxSpeed = 0;
+                let gpxDist = 0;
+                let gpxMaxSpeed = 0;
                 let firstTime = null;
                 let lastTime = null;
 
-                trkpts.forEach((pt, index) => {
+                trkpts.forEach((pt) => {
                     const lat = parseFloat(pt.getAttribute('lat'));
                     const lng = parseFloat(pt.getAttribute('lon'));
                     if (isNaN(lat) || isNaN(lng)) return;
@@ -1192,10 +1186,10 @@
                         speedMps = parseFloat(speedEl.textContent) || 0;
                     }
 
-                    if (index > 0 && newPoints.length > 0) {
+                    if (newPoints.length > 0) {
                         const prev = newPoints[newPoints.length - 1];
                         const d = L.latLng(prev.lat, prev.lng).distanceTo(L.latLng(lat, lng));
-                        calcDist += d;
+                        gpxDist += d;
 
                         if (speedMps <= 0 && timestamp > prev.timestamp) {
                             const dtSec = (timestamp - prev.timestamp) / 1000;
@@ -1206,8 +1200,8 @@
                     }
 
                     const kmh = speedMps * 3.6;
-                    if (kmh > calcMaxSpeed && kmh < 250) { // ノイズ除去（250km/h未満）
-                        calcMaxSpeed = kmh;
+                    if (kmh > gpxMaxSpeed && kmh < 250) { // ノイズ除去（250km/h未満）
+                        gpxMaxSpeed = kmh;
                     }
 
                     newPoints.push({
@@ -1225,15 +1219,18 @@
                     return;
                 }
 
-                // 状態の更新
-                trackPoints = newPoints;
-                totalDistanceMeters = calcDist;
-                maxSpeedKmh = calcMaxSpeed;
+                const prevPointCount = trackPoints.length;
+
+                // 既存の軌跡データを消さずにそのまま追加（結合）
+                trackPoints = trackPoints.concat(newPoints);
+                totalDistanceMeters += gpxDist;
+
+                if (gpxMaxSpeed > maxSpeedKmh) {
+                    maxSpeedKmh = gpxMaxSpeed;
+                }
 
                 if (firstTime && lastTime && lastTime >= firstTime) {
-                    elapsedTimeSeconds = Math.round((lastTime - firstTime) / 1000);
-                } else {
-                    elapsedTimeSeconds = 0;
+                    elapsedTimeSeconds += Math.round((lastTime - firstTime) / 1000);
                 }
 
                 if (trackingStatus !== 'stopped') {
@@ -1249,7 +1246,11 @@
                     map.fitBounds(bounds, { padding: [40, 40] });
                 }
 
-                showToast(`GPXを取り込みました（${(calcDist / 1000).toFixed(2)} km / ${newPoints.length} 点）`, "success");
+                if (prevPointCount > 0) {
+                    showToast(`既存の軌跡にGPXを追加しました (+${(gpxDist / 1000).toFixed(2)} km / 計 ${trackPoints.length} 点)`, "success");
+                } else {
+                    showToast(`GPXを取り込みました（${(gpxDist / 1000).toFixed(2)} km / ${newPoints.length} 点）`, "success");
+                }
             }
 
             // ==========================================
