@@ -3,15 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>GPS トラッカー</title>
-    <!-- iOS / PWA full screen web app settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GPS トラッカー">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#020617">
+    <title>GPS トラッカー</title>
 
-    <!-- Dynamically generated Apple Touch Icon & Favicon -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- JSZip for KMZ extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- toGeoJSON for KML parsing -->
+    <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        // iPhone / iPad 用のホーム画面アイコンおよびファビコンを動的生成
         (function() {
             try {
                 const canvas = document.createElement('canvas');
@@ -19,29 +55,25 @@
                 canvas.height = 180;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                    const gradient = ctx.createLinearGradient(0, 0, 180, 180);
-                    gradient.addColorStop(0, '#10b981');
-                    gradient.addColorStop(1, '#059669');
-                    ctx.fillStyle = gradient;
-                    ctx.beginPath();
-                    ctx.roundRect(0, 0, 180, 180, 40);
-                    ctx.fill();
+                    const grad = ctx.createLinearGradient(0, 0, 180, 180);
+                    grad.addColorStop(0, '#10b981');
+                    grad.addColorStop(1, '#047857');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, 180, 180);
 
+                    // マップピンのシルエットを描画
                     ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
-                    ctx.arc(90, 75, 36, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.beginPath();
-                    ctx.moveTo(60, 88);
-                    ctx.lineTo(120, 88);
-                    ctx.lineTo(90, 145);
+                    ctx.arc(90, 72, 34, Math.PI, 0, false);
+                    ctx.bezierCurveTo(124, 98, 90, 142, 90, 142);
+                    ctx.bezierCurveTo(90, 142, 56, 98, 56, 72);
                     ctx.closePath();
                     ctx.fill();
 
+                    // ピンの中央の穴
                     ctx.fillStyle = '#059669';
                     ctx.beginPath();
-                    ctx.arc(90, 75, 14, 0, Math.PI * 2);
+                    ctx.arc(90, 72, 14, 0, Math.PI * 2, true);
                     ctx.fill();
 
                     const iconUrl = canvas.toDataURL('image/png');
@@ -50,76 +82,36 @@
                     appleIcon.href = iconUrl;
                     document.head.appendChild(appleIcon);
 
-                    const favicon = document.createElement('link');
-                    favicon.rel = 'icon';
-                    favicon.type = 'image/png';
-                    favicon.href = iconUrl;
-                    document.head.appendChild(favicon);
+                    const fav = document.createElement('link');
+                    fav.rel = 'icon';
+                    fav.type = 'image/png';
+                    fav.href = iconUrl;
+                    document.head.appendChild(fav);
                 }
             } catch (e) {
-                console.warn('Icon generator fallback', e);
+                console.warn('Icon generator warning:', e);
             }
         })();
     </script>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- JSZip for KMZ decompression -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-    <!-- toGeoJSON for KML parsing -->
-    <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Inter Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .leaflet-popup-content-wrapper {
-            border-radius: 12px;
-            padding: 4px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
-        }
-        .leaflet-container {
-            font-family: 'Inter', sans-serif;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 9999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); }
+        .leaflet-container { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
         .pulse-dot {
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-            animation: pulse 1.6s infinite cubic-bezier(0.66, 0, 0, 1);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse-ring 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
         }
-        @keyframes pulse {
-            to {
-                box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
-            }
+        @keyframes pulse-ring {
+            to { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
         }
-        /* Custom map pin permanent label styling */
+
+        /* KML/KMZ ピンの常時表示ラベル */
         .kml-pin-label {
             background: rgba(15, 23, 42, 0.88);
             backdrop-filter: blur(4px);
@@ -129,365 +121,335 @@
             font-size: 11px;
             font-weight: 600;
             padding: 2px 7px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
             white-space: nowrap;
             pointer-events: none;
         }
         .leaflet-tooltip-top.kml-pin-label:before {
             border-top-color: rgba(15, 23, 42, 0.88);
         }
-        /* Color input styling */
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        input[type="color"]::-webkit-color-swatch {
-            border: none;
-            border-radius: 4px;
-        }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 flex flex-col h-screen overflow-hidden select-none">
+<body class="bg-slate-950 text-slate-100 flex h-screen w-screen overflow-hidden select-none">
 
-    <!-- Top Navigation Header -->
-    <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 z-30 px-3 sm:px-4 py-2 flex items-center justify-between shadow-lg">
-        <div class="flex items-center space-x-2 sm:space-x-3">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
-                <i data-lucide="navigation" class="w-4 h-4 text-white"></i>
+    <aside id="sidebar" class="w-full sm:w-96 bg-slate-900 border-r border-slate-800 flex flex-col z-20 transition-all duration-300 ease-in-out shrink-0 absolute sm:relative h-full inset-y-0 left-0 shadow-2xl">
+        <!-- App Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base tracking-tight text-white">GPS トラッカー</h1>
+                    <p class="text-[10px] text-slate-400">KML/KMZビューア & 軌跡記録</p>
+                </div>
             </div>
-            <div>
-                <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-                    GPS トラッカー
-                    <span id="recording-badge" class="hidden text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse font-normal">REC</span>
-                </h1>
-                <p class="text-[10px] text-slate-400 hidden sm:block">KML / KMZ インポート & 移動ログ記録</p>
-            </div>
-        </div>
-
-        <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <!-- Background Map Selector -->
-            <div class="relative">
-                <select id="tile-selector" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
-                    <option value="gsi-pale" selected>国土地理院 (淡色)</option>
-                    <option value="gsi-std">国土地理院 (標準)</option>
-                    <option value="gsi-photo">国土地理院 (写真)</option>
-                    <option value="gsi-blank">国土地理院 (白地図)</option>
-                    <option value="osm">OpenStreetMap</option>
-                    <option value="opentopo">OpenTopoMap (地形図)</option>
-                    <option value="esri-sat">衛星写真 (Esri)</option>
-                </select>
-            </div>
-
-            <!-- Current Location Quick Focus Button -->
-            <button id="btn-recenter" title="現在地を表示" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition">
-                <i data-lucide="crosshair" class="w-4 h-4"></i>
+            <!-- メニュー非表示ボタン（スマホ・PC共通） -->
+            <button id="btn-toggle-sidebar" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 text-xs" title="メニューを非表示">
+                <span class="text-[11px] sm:hidden">隠す</span>
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
             </button>
         </div>
-    </header>
 
-    <div class="flex flex-1 relative overflow-hidden">
-        <!-- Sidebar Panel -->
-        <aside id="sidebar" class="absolute md:relative z-20 w-80 sm:w-88 h-full bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ease-in-out transform translate-x-0 shadow-2xl">
-            <div class="flex-1 overflow-y-auto p-3.5 space-y-4">
-                <!-- GPS Tracking Control Card -->
-                <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 shadow-sm space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <span class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                                <i data-lucide="activity" class="w-4 h-4"></i>
-                            </span>
-                            <span class="text-xs font-semibold text-slate-200">リアルタイムトラッキング</span>
-                        </div>
-                        <span id="gps-status-indicator" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 border border-slate-600">待機中</span>
+        <!-- Scrollable Controls Area -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            <!-- GPS Tracking Card -->
+            <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-md">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                        リアルタイムGPS
+                    </span>
+                    <span id="gps-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-700 text-slate-300">
+                        待機中
+                    </span>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-2 mb-3.5">
+                    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-400">移動距離</div>
+                        <div id="stat-distance" class="text-lg font-bold text-white font-mono">0.00 <span class="text-xs font-normal text-slate-400">km</span></div>
                     </div>
+                    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-400">現在速度</div>
+                        <div id="stat-speed" class="text-lg font-bold text-white font-mono">0.0 <span class="text-xs font-normal text-slate-400">km/h</span></div>
+                    </div>
+                    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-400">最高速度</div>
+                        <div id="stat-max-speed" class="text-xs font-semibold text-slate-200 font-mono mt-1">0.0 km/h</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-400">記録ポイント</div>
+                        <div id="stat-points" class="text-xs font-semibold text-slate-200 font-mono mt-1">0 点</div>
+                    </div>
+                </div>
 
-                    <!-- Action Buttons -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-toggle-tracking" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-900/30 transition">
-                            <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
-                            <span>トラッキング開始</span>
-                        </button>
-                        <button id="btn-clear-track" class="col-span-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-1.5 transition">
+                <!-- Action Controls -->
+                <div class="space-y-2">
+                    <button id="btn-toggle-tracking" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                        <span>トラッキング開始</span>
+                    </button>
+
+                    <div class="flex gap-2">
+                        <button id="btn-clear-track" class="flex-1 py-2 px-3 bg-slate-700/70 hover:bg-rose-900/40 hover:text-rose-300 text-slate-300 text-xs font-medium rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-600/40">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             <span>軌跡クリア</span>
                         </button>
-                    </div>
-
-                    <!-- Auto-Follow Mode Toggle -->
-                    <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between">
-                        <span class="text-[11px] text-slate-300 flex items-center gap-1.5">
-                            <i data-lucide="locate-fixed" class="w-3.5 h-3.5 text-emerald-400"></i>
-                            現在地を中央に自動追従
-                        </span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="toggle-autofollow-switch" class="sr-only peer" checked>
-                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
-                    </div>
-
-                    <!-- Track Line Styling Accordion -->
-                    <div class="pt-2 border-t border-slate-700/60 space-y-2">
-                        <button id="btn-toggle-track-style" class="w-full flex items-center justify-between text-[11px] text-slate-300 hover:text-white transition">
-                            <span class="flex items-center gap-1.5">
-                                <span id="track-color-indicator" class="w-2.5 h-2.5 rounded-full bg-red-500 border border-white/40"></span>
-                                軌跡の表示スタイル設定
-                            </span>
-                            <i id="track-style-arrow" data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200"></i>
+                        <button id="btn-demo-track" class="py-2 px-3 bg-slate-700/70 hover:bg-indigo-900/40 hover:text-indigo-300 text-slate-300 text-xs font-medium rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-600/40" title="PCテスト用デモ走行">
+                            <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+                            <span>デモ走行</span>
                         </button>
-                        <div id="track-style-panel" class="hidden bg-slate-900/90 rounded-lg p-2.5 border border-slate-700/80 space-y-2.5 text-[11px]">
-                            <!-- Color Picker & Quick Swatches -->
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">ライン色:</span>
-                                <div class="flex items-center space-x-1.5">
-                                    <input type="color" id="track-color-picker" value="#ef4444" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
-                                    <button type="button" data-color="#ef4444" class="w-4 h-4 rounded-full bg-red-500 border border-white/20 hover:scale-110 transition"></button>
-                                    <button type="button" data-color="#10b981" class="w-4 h-4 rounded-full bg-emerald-500 border border-white/20 hover:scale-110 transition"></button>
-                                    <button type="button" data-color="#3b82f6" class="w-4 h-4 rounded-full bg-blue-500 border border-white/20 hover:scale-110 transition"></button>
-                                    <button type="button" data-color="#f59e0b" class="w-4 h-4 rounded-full bg-amber-500 border border-white/20 hover:scale-110 transition"></button>
-                                    <button type="button" data-color="#a855f7" class="w-4 h-4 rounded-full bg-purple-500 border border-white/20 hover:scale-110 transition"></button>
-                                </div>
-                            </div>
-                            <!-- Stroke Width -->
-                            <div class="space-y-1">
-                                <div class="flex justify-between text-slate-400">
-                                    <span>太さ:</span>
-                                    <span id="track-width-label" class="font-mono text-slate-200">10px</span>
-                                </div>
-                                <input type="range" id="track-width-slider" min="2" max="16" value="10" class="w-full accent-emerald-500 cursor-pointer">
-                            </div>
-                            <!-- Opacity -->
-                            <div class="space-y-1">
-                                <div class="flex justify-between text-slate-400">
-                                    <span>透明度:</span>
-                                    <span id="track-opacity-label" class="font-mono text-slate-200">90%</span>
-                                </div>
-                                <input type="range" id="track-opacity-slider" min="20" max="100" value="90" class="w-full accent-emerald-500 cursor-pointer">
-                            </div>
-                        </div>
                     </div>
+                </div>
 
-                    <!-- Statistics Dashboard -->
-                    <div class="grid grid-cols-2 gap-2 pt-1 text-[11px]">
-                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-700/50">
-                            <span class="text-slate-400 block text-[10px]">移動距離</span>
-                            <span id="stat-distance" class="text-sm font-semibold text-emerald-400 font-mono">0.00 km</span>
+                <!-- Track Style Settings Accordion -->
+                <div class="mt-3 pt-3 border-t border-slate-700/60">
+                    <button id="btn-toggle-track-style" class="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="palette" class="w-3.5 h-3.5 text-rose-400"></i>
+                            軌跡の表示スタイル設定
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="track-style-preview" class="w-3.5 h-3.5 rounded-full border border-white/50" style="background-color: #ef4444;"></span>
+                            <i id="track-style-arrow" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
                         </div>
-                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-700/50">
-                            <span class="text-slate-400 block text-[10px]">現在速度</span>
-                            <span id="stat-speed" class="text-sm font-semibold text-slate-200 font-mono">0.0 km/h</span>
-                        </div>
-                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-700/50">
-                            <span class="text-slate-400 block text-[10px]">測位精度 (GPS)</span>
-                            <span id="stat-accuracy" class="text-xs font-semibold text-slate-300 font-mono">-</span>
-                        </div>
-                        <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-700/50">
-                            <span class="text-slate-400 block text-[10px]">記録ポイント</span>
-                            <span id="stat-points" class="text-xs font-semibold text-slate-300 font-mono">0 点</span>
-                        </div>
-                    </div>
-
-                    <!-- Demo Simulation Testing Button for PC / Previews -->
-                    <button id="btn-demo-simulation" class="w-full py-1.5 px-2 bg-slate-700/50 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-lg text-[10px] flex items-center justify-center space-x-1.5 border border-slate-700 transition">
-                        <i data-lucide="play-circle" class="w-3 h-3 text-cyan-400"></i>
-                        <span>PC・プレビュー用 デモ走行テスト</span>
                     </button>
+                    <div id="track-style-panel" class="hidden mt-3 space-y-2.5 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <div>
+                            <div class="text-[10px] text-slate-400 mb-1 flex justify-between">
+                                <span>表示カラー</span>
+                                <span id="lbl-track-color" class="font-mono text-slate-300">#ef4444</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input id="track-color-picker" type="color" value="#ef4444" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0">
+                                <div class="flex gap-1.5 flex-1 overflow-x-auto py-1">
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#ef4444" style="background:#ef4444;"></button>
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#10b981" style="background:#10b981;"></button>
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#3b82f6" style="background:#3b82f6;"></button>
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#f59e0b" style="background:#f59e0b;"></button>
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#8b5cf6" style="background:#8b5cf6;"></button>
+                                    <button class="color-preset w-5 h-5 rounded-full border border-white/40 shrink-0" data-color="#eab308" style="background:#eab308;"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-400 mb-1 flex justify-between">
+                                <span>線の太さ</span>
+                                <span id="lbl-track-width" class="font-mono text-slate-300">10 px</span>
+                            </div>
+                            <input id="slider-track-width" type="range" min="2" max="16" value="10" class="w-full accent-rose-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-400 mb-1 flex justify-between">
+                                <span>不透明度</span>
+                                <span id="lbl-track-opacity" class="font-mono text-slate-300">100 %</span>
+                            </div>
+                            <input id="slider-track-opacity" type="range" min="20" max="100" value="100" class="w-full accent-rose-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KML / KMZ Upload & Layers -->
+            <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-md">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-4 h-4 text-sky-400"></i>
+                        KML / KMZ インポート
+                    </span>
+                    <span id="layer-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-700 text-slate-300">
+                        0 ファイル
+                    </span>
                 </div>
 
-                <!-- KML / KMZ File Importer -->
-                <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 shadow-sm space-y-2.5">
-                    <div class="flex items-center space-x-2">
-                        <span class="p-1.5 rounded-lg bg-sky-500/10 text-sky-400">
-                            <i data-lucide="file-up" class="w-4 h-4"></i>
-                        </span>
-                        <span class="text-xs font-semibold text-slate-200">KML / KMZ インポート</span>
-                    </div>
-
-                    <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-slate-900/40">
-                        <input type="file" id="file-input" accept=".kml,.kmz" multiple class="hidden">
-                        <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-500 mx-auto mb-1"></i>
-                        <p class="text-xs text-slate-300 font-medium">KML または KMZ を選択</p>
-                        <p class="text-[10px] text-slate-500 mt-0.5">ドラッグ＆ドロップでも読み込み可能</p>
-                    </div>
-
-                    <!-- Imported Layers List -->
-                    <div class="space-y-1.5">
-                        <div class="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
-                            <span>インポート済みレイヤー</span>
-                            <span id="layer-count" class="font-mono">0 件</span>
-                        </div>
-                        <div id="layer-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-                            <p id="empty-layer-msg" class="text-[11px] text-slate-500 italic text-center py-2">読み込まれたレイヤーはありません</p>
-                        </div>
-                    </div>
+                <!-- Dropzone -->
+                <div id="dropzone" class="border-2 border-dashed border-slate-600/80 hover:border-sky-400/80 hover:bg-sky-950/20 rounded-xl p-3 text-center transition-all cursor-pointer">
+                    <i data-lucide="file-up" class="w-6 h-6 mx-auto mb-1 text-slate-400"></i>
+                    <p class="text-xs text-slate-200 font-medium">KML または KMZ を選択 / ドロップ</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">複数ファイルの重ね合わせ対応</p>
+                    <input type="file" id="file-input" accept=".kml,.kmz" multiple class="hidden">
                 </div>
 
-                <!-- Export & Share Section -->
-                <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 shadow-sm space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <span class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
-                            <i data-lucide="download" class="w-4 h-4"></i>
-                        </span>
-                        <span class="text-xs font-semibold text-slate-200">軌跡データのエクスポート</span>
+                <!-- Layer List -->
+                <div id="layer-list" class="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <div id="no-layers-msg" class="text-center py-3 text-xs text-slate-500">
+                        インポートされたレイヤーはありません
                     </div>
+                </div>
+            </div>
+
+            <!-- Map Layers & Export -->
+            <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-md space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i data-lucide="map" class="w-4 h-4 text-emerald-400"></i>
+                        背景地図（完全無料・登録不要）
+                    </label>
+                    <select id="tile-select" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500">
+                        <option value="gsi_pale" selected>国土地理院 淡色地図（推奨・軌跡が鮮明）</option>
+                        <option value="gsi_std">国土地理院 標準地図</option>
+                        <option value="gsi_photo">国土地理院 航空写真</option>
+                        <option value="gsi_blank">国土地理院 白地図</option>
+                        <option value="osm">OpenStreetMap 標準地図</option>
+                        <option value="opentopo">OpenTopoMap 地形図（等高線）</option>
+                        <option value="esri_world">Esri World Imagery 衛星写真</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 border-t border-slate-700/60">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                        軌跡データ出力
+                    </label>
                     <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-export-gpx" class="bg-slate-700/80 hover:bg-slate-700 text-slate-200 py-1.5 px-2 rounded-lg text-xs flex items-center justify-center space-x-1 border border-slate-600/50 transition">
-                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                        <button id="btn-export-gpx" class="py-2 px-3 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="file-code" class="w-3.5 h-3.5"></i>
                             <span>GPX 保存</span>
                         </button>
-                        <button id="btn-export-kml" class="bg-slate-700/80 hover:bg-slate-700 text-slate-200 py-1.5 px-2 rounded-lg text-xs flex items-center justify-center space-x-1 border border-slate-600/50 transition">
-                            <i data-lucide="map" class="w-3.5 h-3.5"></i>
+                        <button id="btn-export-kml" class="py-2 px-3 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                             <span>KML 保存</span>
                         </button>
                     </div>
-                    <button id="btn-share-drive" class="w-full bg-slate-700/80 hover:bg-slate-700 text-slate-200 py-1.5 px-2 rounded-lg text-xs flex items-center justify-center space-x-1.5 border border-slate-600/50 transition">
-                        <i data-lucide="share-2" class="w-3.5 h-3.5 text-emerald-400"></i>
-                        <span>Googleドライブ / 端末で共有</span>
+                    <button id="btn-export-share" class="w-full mt-2 py-2 px-3 bg-slate-700/60 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5">
+                        <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                        <span>Googleドライブ / 端末共有</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Version & Collapse Footer -->
-            <div class="px-3 py-1.5 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 font-mono select-none">
-                <span class="flex items-center gap-1">
-                    <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
-                    build
-                </span>
-                <span>v2026.10.06-1025</span>
-                <button id="btn-collapse-sidebar" class="text-slate-400 hover:text-white p-1 rounded transition" title="メニューを閉じる">
-                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                </button>
-            </div>
-        </aside>
+        </div>
 
-        <!-- Map Canvas Area -->
-        <main class="flex-1 relative h-full">
-            <div id="map" class="w-full h-full z-10 bg-slate-950"></div>
+        <!-- Version Footer -->
+        <div class="px-4 py-2 bg-slate-950/90 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono select-none">
+            <span class="flex items-center gap-1.5">
+                <i data-lucide="git-commit" class="w-3.5 h-3.5 text-emerald-500"></i>
+                build version
+            </span>
+            <span class="text-slate-300 font-semibold">v2026.10.06-1025</span>
+        </div>
+    </aside>
 
-            <!-- Floating Show Menu Button (When Sidebar is Collapsed) -->
-            <button id="btn-show-sidebar" class="hidden absolute top-3 left-3 z-20 bg-slate-900/90 hover:bg-slate-800 text-slate-200 px-3 py-2 rounded-xl border border-slate-700/80 shadow-xl backdrop-blur-md text-xs font-medium flex items-center gap-2 transition transform active:scale-95">
-                <i data-lucide="panel-left-open" class="w-4 h-4 text-emerald-400"></i>
-                <span>メニュー</span>
-            </button>
+    <!-- Map Canvas Container -->
+    <main class="flex-1 h-full w-full relative">
+        <div id="map" class="w-full h-full z-10 bg-slate-950"></div>
 
-            <!-- Floating Auto-Follow Quick Status Indicator on Map -->
-            <div id="floating-autofollow-btn" class="absolute top-3 right-3 z-20 bg-slate-900/90 hover:bg-slate-800 text-slate-200 p-2.5 rounded-xl border border-slate-700/80 shadow-xl backdrop-blur-md cursor-pointer transition active:scale-95 flex items-center justify-center">
-                <i id="autofollow-icon" data-lucide="locate-fixed" class="w-4 h-4 text-emerald-400"></i>
-            </div>
-        </main>
-    </div>
+        <!-- Floating Button: Show Sidebar (Visible when sidebar collapsed) -->
+        <button id="btn-show-sidebar" class="hidden absolute top-4 left-4 z-20 bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold transition-all">
+            <i data-lucide="panel-left-open" class="w-4 h-4 text-emerald-400"></i>
+            <span>メニューを表示</span>
+        </button>
 
-    <!-- Custom Modal for Confirmation -->
-    <div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-4 space-y-3 shadow-2xl">
-            <h3 id="modal-title" class="text-sm font-bold text-slate-100">確認</h3>
-            <p id="modal-desc" class="text-xs text-slate-300 leading-relaxed"></p>
-            <div class="flex justify-end space-x-2 pt-2">
-                <button id="modal-btn-cancel" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition">キャンセル</button>
-                <button id="modal-btn-confirm" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs text-white font-medium transition">実行する</button>
+        <!-- Floating Button: Auto Follow Mode Toggle (Default ON) -->
+        <button id="btn-toggle-follow" class="absolute top-4 right-4 z-20 bg-emerald-600 text-white border border-emerald-400/50 rounded-xl p-3 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold transition-all" title="現在地自動追従">
+            <i data-lucide="navigation" class="w-4 h-4 fill-current"></i>
+            <span id="follow-status-text" class="hidden sm:inline">追従 ON</span>
+        </button>
+
+        <!-- Floating Button: Recenter on Current Location -->
+        <button id="btn-recenter" class="absolute bottom-6 right-4 z-20 bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md transition-all active:scale-95" title="現在地に移動">
+            <i data-lucide="crosshair" class="w-5 h-5 text-emerald-400"></i>
+        </button>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col gap-2 w-11/12 sm:w-auto"></div>
+    </main>
+
+    <!-- Custom Confirmation Modal (No native confirm/alert) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+            <h3 id="modal-title" class="text-sm font-bold text-white mb-2">確認</h3>
+            <p id="modal-desc" class="text-xs text-slate-300 leading-relaxed mb-5">この操作を実行してもよろしいですか？</p>
+            <div class="flex justify-end gap-2.5">
+                <button id="modal-btn-cancel" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl transition-colors">キャンセル</button>
+                <button id="modal-btn-ok" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-900/30 transition-colors">実行</button>
             </div>
         </div>
     </div>
 
-    <!-- Notification Toast Container -->
-    <div id="toast" class="fixed bottom-4 right-4 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800/95 text-slate-100 border border-slate-700 px-3.5 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2.5 text-xs max-w-sm">
-        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
-        <span id="toast-msg">通知メッセージ</span>
-    </div>
-
     <script>
-        // Core Coordinates: Koriyama, Fukushima Prefecture, Japan
+        // 福島県郡山市中心部（初期位置）
         const DEFAULT_LAT = 37.3980;
         const DEFAULT_LNG = 140.3880;
-        const STORAGE_KEY_TRACK = 'gps_tracker_history_v2';
-        const STORAGE_KEY_STYLE = 'gps_tracker_style_v2';
+        const DEFAULT_ZOOM = 13;
 
-        // State Variables
-        let map;
-        let activeTileLayer;
-        let isTracking = false;
-        let isSimulating = false;
-        let simulationInterval = null;
-        let watchPositionId = null;
-        let autoFollowMode = true; // Default ON as requested
-        let wakeLock = null;
-
-        // Track Data & Styles
-        let trackPoints = []; // Array of { lat, lng, time, speed, accuracy }
-        let trackPolyline = null;
-        let userMarker = null;
-
-        let trackStyle = {
-            color: '#ef4444', // Default Red as requested
-            weight: 10,       // Default 10px as requested
-            opacity: 0.90
-        };
-
-        // KML / KMZ Layers Registry
-        let importedLayers = []; // { id, name, layer, count, bounds, style: { color, weight, opacity } }
-
-        // Free Background Tile Providers (100% Free & No API Key Required)
+        // タイル定義（完全無料・APIキー不要）
         const TILE_PROVIDERS = {
-            'gsi-pale': {
+            gsi_pale: {
                 url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
                 options: { maxZoom: 18, attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>' }
             },
-            'gsi-std': {
+            gsi_std: {
                 url: 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
                 options: { maxZoom: 18, attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>' }
             },
-            'gsi-photo': {
+            gsi_photo: {
                 url: 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
                 options: { maxZoom: 18, attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>' }
             },
-            'gsi-blank': {
+            gsi_blank: {
                 url: 'https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png',
-                options: { maxZoom: 18, attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>' }
+                options: { maxZoom: 14, attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>' }
             },
-            'osm': {
+            osm: {
                 url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                options: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
+                options: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }
             },
-            'opentopo': {
+            opentopo: {
                 url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-                options: { maxZoom: 17, attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>' }
+                options: { maxZoom: 17, attribution: 'Map data: &copy; OSM, SRTM | Map style: &copy; OpenTopoMap' }
             },
-            'esri-sat': {
+            esri_world: {
                 url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                options: { maxZoom: 18, attribution: 'Tiles &copy; Esri' }
+                options: { maxZoom: 18, attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' }
             }
         };
 
-        // Utility: Convert KML 8-digit hex (aabbggrr) to web standard hex (#rrggbb)
-        function kmlColorToHex(kmlColor) {
-            if (!kmlColor || typeof kmlColor !== 'string') return null;
-            const clean = kmlColor.trim().replace(/^#/, '');
-            if (clean.length === 8) {
-                const aa = parseInt(clean.substring(0, 2), 16) / 255;
-                const bb = clean.substring(2, 4);
-                const gg = clean.substring(4, 6);
-                const rr = clean.substring(6, 8);
-                return { hex: `#${rr}${gg}${bb}`, opacity: Math.round(aa * 100) / 100 };
-            }
-            if (clean.length === 6) {
-                return { hex: `#${clean}`, opacity: 1.0 };
-            }
-            return null;
-        }
+        // アプリ状態
+        let map;
+        let currentTileLayer;
+        let isTracking = false;
+        let watchId = null;
+        let wakeLock = null;
+        let autoFollowMode = true; // デフォルトでON
+        let trackPoints = []; // [{lat, lng, alt, speed, accuracy, timestamp}]
+        let trackPolyline = null;
+        let currentMarker = null;
+        let maxSpeedKmh = 0;
+        let totalDistanceKm = 0;
+        let importedLayers = []; // [{id, name, layer, count, color, weight, opacity}]
+        let demoInterval = null;
 
-        // Initialize Map
-        function initMap() {
+        // 軌跡スタイル状態（デフォルト: 赤色 #ef4444, 太さ 10px）
+        let trackStyle = {
+            color: '#ef4444',
+            weight: 10,
+            opacity: 1.0
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        function initApp() {
+            // Leaflet マップ初期化
             map = L.map('map', {
-                center: [DEFAULT_LAT, DEFAULT_LNG],
-                zoom: 14,
-                zoomControl: false
-            });
+                zoomControl: false,
+                tap: true
+            }).setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
 
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // Set default base layer
-            changeTileLayer('gsi-pale');
+            // 初回タイルセット（国土地理院 淡色地図）
+            currentTileLayer = L.tileLayer(TILE_PROVIDERS.gsi_pale.url, TILE_PROVIDERS.gsi_pale.options).addTo(map);
 
-            // Initialize Track Polyline with active style
+            // 保存された軌跡スタイルを復元
             loadSavedTrackStyle();
+
+            // 軌跡用ポリライン作成
             trackPolyline = L.polyline([], {
                 color: trackStyle.color,
                 weight: trackStyle.weight,
@@ -496,75 +458,351 @@
                 lineJoin: 'round'
             }).addTo(map);
 
-            // User indicator marker
-            userMarker = L.circleMarker([DEFAULT_LAT, DEFAULT_LNG], {
-                radius: 7,
-                fillColor: trackStyle.color,
-                color: '#ffffff',
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 1,
-                className: 'pulse-dot'
-            });
+            // ローカルストレージから前回のトラックを復元
+            restoreSavedTrack();
 
-            // Map drag listener: when user pans manually, pause auto-follow
-            map.on('dragstart', function() {
+            // ユーザーが手動でマップをドラッグ・パンした場合は自動追従を解除
+            map.on('dragstart', () => {
                 if (autoFollowMode) {
                     setAutoFollow(false);
-                    showToast('手動操作のため自動追従を一時停止しました', 'info');
+                    showToast('地図を操作したため、自動追従を一時停止しました', 'info');
                 }
             });
 
-            // Restore Track History from LocalStorage
-            restoreStoredTrack();
+            // イベントリスナーの登録
+            setupEventListeners();
+            lucide.createIcons();
+
+            // 起動トースト
+            showToast('GPS トラッカーの準備が完了しました', 'success');
         }
 
-        function changeTileLayer(key) {
-            const provider = TILE_PROVIDERS[key] || TILE_PROVIDERS['gsi-pale'];
-            if (activeTileLayer) {
-                map.removeLayer(activeTileLayer);
-            }
-            activeTileLayer = L.tileLayer(provider.url, provider.options).addTo(map);
-        }
-
-        function loadSavedTrackStyle() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY_STYLE);
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.color) trackStyle.color = parsed.color;
-                    if (parsed.weight) trackStyle.weight = Number(parsed.weight);
-                    if (parsed.opacity) trackStyle.opacity = Number(parsed.opacity);
+        function setupEventListeners() {
+            // 背景地図セレクタ
+            document.getElementById('tile-select').addEventListener('change', (e) => {
+                const prov = TILE_PROVIDERS[e.target.value];
+                if (prov) {
+                    map.removeLayer(currentTileLayer);
+                    currentTileLayer = L.tileLayer(prov.url, prov.options).addTo(map);
                 }
-            } catch (e) {
-                console.warn('Failed to load saved track style', e);
-            }
-            syncTrackStyleUI();
-        }
+            });
 
-        function saveTrackStyle() {
-            try {
-                localStorage.setItem(STORAGE_KEY_STYLE, JSON.stringify(trackStyle));
-            } catch (e) {
-                console.warn('Failed to save track style', e);
-            }
-        }
+            // サイドバー開閉
+            const sidebar = document.getElementById('sidebar');
+            const btnShowSidebar = document.getElementById('btn-show-sidebar');
+            const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
 
-        function syncTrackStyleUI() {
+            btnToggleSidebar.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                btnShowSidebar.classList.remove('hidden');
+                setTimeout(() => map.invalidateSize(), 310);
+            });
+
+            btnShowSidebar.addEventListener('click', () => {
+                sidebar.classList.remove('-translate-x-full');
+                btnShowSidebar.classList.add('hidden');
+                setTimeout(() => map.invalidateSize(), 310);
+            });
+
+            // トラッキング開始・停止
+            document.getElementById('btn-toggle-tracking').addEventListener('click', toggleTracking);
+
+            // 軌跡クリア
+            document.getElementById('btn-clear-track').addEventListener('click', () => {
+                if (trackPoints.length === 0) {
+                    showToast('クリアする軌跡データがありません', 'info');
+                    return;
+                }
+                showConfirm('軌跡データの消去', '記録した移動軌跡をすべて消去しますか？（この操作は元に戻せません）', () => {
+                    clearTrackData();
+                });
+            });
+
+            // デモ走行
+            document.getElementById('btn-demo-track').addEventListener('click', toggleDemoDrive);
+
+            // 自動追従ボタン
+            document.getElementById('btn-toggle-follow').addEventListener('click', () => {
+                setAutoFollow(!autoFollowMode);
+            });
+
+            // 現在地へ移動
+            document.getElementById('btn-recenter').addEventListener('click', () => {
+                if (trackPoints.length > 0) {
+                    const last = trackPoints[trackPoints.length - 1];
+                    map.flyTo([last.lat, last.lng], 16, { duration: 0.8 });
+                    setAutoFollow(true);
+                } else {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const latlng = [pos.coords.latitude, pos.coords.longitude];
+                            map.flyTo(latlng, 16, { duration: 0.8 });
+                            setAutoFollow(true);
+                        },
+                        () => {
+                            map.flyTo([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM, { duration: 0.8 });
+                            showToast('福島県郡山市に移動しました', 'info');
+                        }
+                    );
+                }
+            });
+
+            // 軌跡スタイル アコーディオン開閉
+            document.getElementById('btn-toggle-track-style').addEventListener('click', () => {
+                const panel = document.getElementById('track-style-panel');
+                const arrow = document.getElementById('track-style-arrow');
+                panel.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-180');
+            });
+
+            // 軌跡スタイル コントロール
             const colorPicker = document.getElementById('track-color-picker');
-            const colorDot = document.getElementById('track-color-indicator');
-            const widthSlider = document.getElementById('track-width-slider');
-            const widthLabel = document.getElementById('track-width-label');
-            const opacitySlider = document.getElementById('track-opacity-slider');
-            const opacityLabel = document.getElementById('track-opacity-label');
+            const lblTrackColor = document.getElementById('lbl-track-color');
+            const stylePreview = document.getElementById('track-style-preview');
+            const sliderWidth = document.getElementById('slider-track-width');
+            const lblWidth = document.getElementById('lbl-track-width');
+            const sliderOpacity = document.getElementById('slider-track-opacity');
+            const lblOpacity = document.getElementById('lbl-track-opacity');
 
-            if (colorPicker) colorPicker.value = trackStyle.color;
-            if (colorDot) colorDot.style.backgroundColor = trackStyle.color;
-            if (widthSlider) widthSlider.value = trackStyle.weight;
-            if (widthLabel) widthLabel.textContent = `${trackStyle.weight}px`;
-            if (opacitySlider) opacitySlider.value = Math.round(trackStyle.opacity * 100);
-            if (opacityLabel) opacityLabel.textContent = `${Math.round(trackStyle.opacity * 100)}%`;
+            colorPicker.addEventListener('input', (e) => {
+                applyTrackStyle({ color: e.target.value });
+            });
 
+            document.querySelectorAll('.color-preset').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const col = e.currentTarget.getAttribute('data-color');
+                    colorPicker.value = col;
+                    applyTrackStyle({ color: col });
+                });
+            });
+
+            sliderWidth.addEventListener('input', (e) => {
+                applyTrackStyle({ weight: parseInt(e.target.value, 10) });
+            });
+
+            sliderOpacity.addEventListener('input', (e) => {
+                applyTrackStyle({ opacity: parseInt(e.target.value, 10) / 100 });
+            });
+
+            // ファイルドロップ & インポート
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-sky-400', 'bg-sky-950/40');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-sky-400', 'bg-sky-950/40');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-sky-400', 'bg-sky-950/40');
+                if (e.dataTransfer.files?.length) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files?.length) {
+                    handleFiles(e.target.files);
+                    fileInput.value = '';
+                }
+            });
+
+            // エクスポートボタン群
+            document.getElementById('btn-export-gpx').addEventListener('click', () => exportTrack('gpx'));
+            document.getElementById('btn-export-kml').addEventListener('click', () => exportTrack('kml'));
+            document.getElementById('btn-export-share').addEventListener('click', shareTrackFile);
+        }
+
+        function toggleTracking() {
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        }
+
+        async function startTracking() {
+            if (!('geolocation' in navigator)) {
+                showToast('お使いの環境では位置情報（GPS）がサポートされていません', 'error');
+                return;
+            }
+
+            // スリープ防止
+            requestWakeLock();
+
+            const statusBadge = document.getElementById('gps-status-badge');
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-500/40 animate-pulse';
+            statusBadge.textContent = '測位中...';
+
+            const btn = document.getElementById('btn-toggle-tracking');
+            btn.className = 'w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-rose-900/30 transition-all flex items-center justify-center gap-2';
+            btn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i><span>トラッキング停止</span>';
+            lucide.createIcons();
+
+            isTracking = true;
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 1000
+            };
+
+            watchId = navigator.geolocation.watchPosition(handlePositionSuccess, handlePositionError, options);
+            showToast('GPSトラッキングを開始しました', 'success');
+        }
+
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            releaseWakeLock();
+
+            isTracking = false;
+            const statusBadge = document.getElementById('gps-status-badge');
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-700 text-slate-300';
+            statusBadge.textContent = '待機中';
+
+            const btn = document.getElementById('btn-toggle-tracking');
+            btn.className = 'w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2';
+            btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-current"></i><span>トラッキング開始</span>';
+            lucide.createIcons();
+
+            showToast('GPSトラッキングを停止しました', 'info');
+        }
+
+        function handlePositionSuccess(pos) {
+            const coords = pos.coords;
+            const pt = {
+                lat: coords.latitude,
+                lng: coords.longitude,
+                alt: coords.altitude || 0,
+                speed: coords.speed !== null && !isNaN(coords.speed) ? Math.max(0, coords.speed * 3.6) : 0,
+                accuracy: coords.accuracy || 0,
+                timestamp: new Date().toISOString()
+            };
+
+            appendTrackPoint(pt);
+
+            const statusBadge = document.getElementById('gps-status-badge');
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-500/40';
+            statusBadge.textContent = `記録中 (±${Math.round(pt.accuracy)}m)`;
+        }
+
+        function handlePositionError(err) {
+            console.warn('GPS Watch Error:', err.code, err.message);
+            if (err.code === 1) {
+                showToast('位置情報の利用が拒否されました。設定から位置情報を許可してください', 'error');
+                stopTracking();
+            } else if (err.code === 2) {
+                showToast('位置情報を検出できません（電波状態をご確認ください）', 'error');
+            } else if (err.code === 3) {
+                showToast('測位がタイムアウトしました。再試行中...', 'info');
+            }
+        }
+
+        function appendTrackPoint(pt) {
+            if (trackPoints.length > 0) {
+                const prev = trackPoints[trackPoints.length - 1];
+                const d = calcDistance(prev.lat, prev.lng, pt.lat, pt.lng);
+                totalDistanceKm += d;
+            }
+            trackPoints.push(pt);
+
+            if (pt.speed > maxSpeedKmh) {
+                maxSpeedKmh = pt.speed;
+            }
+
+            // 地図上のライン更新
+            trackPolyline.addLatLng([pt.lat, pt.lng]);
+
+            // 現在地マーカー更新
+            updateCurrentMarker(pt.lat, pt.lng);
+
+            // 自動追従が有効なら現在地へ地図を移動
+            if (autoFollowMode) {
+                map.panTo([pt.lat, pt.lng], { animate: true, duration: 0.6 });
+            }
+
+            // 統計表示更新
+            updateStatsUI(pt.speed);
+
+            // ローカルストレージに自動保存
+            saveTrackToStorage();
+        }
+
+        function updateCurrentMarker(lat, lng) {
+            if (!currentMarker) {
+                const pulseIcon = L.divIcon({
+                    className: 'relative flex items-center justify-center',
+                    html: `<div class="pulse-dot w-4 h-4 rounded-full border-2 border-white" style="background-color: ${trackStyle.color};"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                currentMarker = L.marker([lat, lng], { icon: pulseIcon, zIndexOffset: 1000 }).addTo(map);
+            } else {
+                currentMarker.setLatLng([lat, lng]);
+                const el = currentMarker.getElement();
+                if (el) {
+                    const dot = el.querySelector('.pulse-dot');
+                    if (dot) dot.style.backgroundColor = trackStyle.color;
+                }
+            }
+        }
+
+        function updateStatsUI(currentSpeed) {
+            document.getElementById('stat-distance').innerHTML = `${totalDistanceKm.toFixed(2)} <span class="text-xs font-normal text-slate-400">km</span>`;
+            document.getElementById('stat-speed').innerHTML = `${currentSpeed.toFixed(1)} <span class="text-xs font-normal text-slate-400">km/h</span>`;
+            document.getElementById('stat-max-speed').textContent = `${maxSpeedKmh.toFixed(1)} km/h`;
+            document.getElementById('stat-points').textContent = `${trackPoints.length} 点`;
+        }
+
+        function calcDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // 地球半径 (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function setAutoFollow(enabled) {
+            autoFollowMode = enabled;
+            const btn = document.getElementById('btn-toggle-follow');
+            const txt = document.getElementById('follow-status-text');
+
+            if (enabled) {
+                btn.className = 'absolute top-4 right-4 z-20 bg-emerald-600 text-white border border-emerald-400/50 rounded-xl p-3 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold transition-all';
+                txt.textContent = '追従 ON';
+                if (trackPoints.length > 0) {
+                    const last = trackPoints[trackPoints.length - 1];
+                    map.panTo([last.lat, last.lng], { animate: true });
+                }
+            } else {
+                btn.className = 'absolute top-4 right-4 z-20 bg-slate-900/90 text-slate-400 border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold transition-all hover:text-white';
+                txt.textContent = '追従 OFF';
+            }
+        }
+
+        function applyTrackStyle(newStyle) {
+            if (newStyle.color) trackStyle.color = newStyle.color;
+            if (newStyle.weight !== undefined) trackStyle.weight = newStyle.weight;
+            if (newStyle.opacity !== undefined) trackStyle.opacity = newStyle.opacity;
+
+            // UIコントロールに同期
+            document.getElementById('lbl-track-color').textContent = trackStyle.color;
+            document.getElementById('track-style-preview').style.backgroundColor = trackStyle.color;
+            document.getElementById('lbl-track-width').textContent = `${trackStyle.weight} px`;
+            document.getElementById('slider-track-width').value = trackStyle.weight;
+            document.getElementById('lbl-track-opacity').textContent = `${Math.round(trackStyle.opacity * 100)} %`;
+            document.getElementById('slider-track-opacity').value = Math.round(trackStyle.opacity * 100);
+
+            // ポリラインとマーカーに即時反映
             if (trackPolyline) {
                 trackPolyline.setStyle({
                     color: trackStyle.color,
@@ -572,459 +810,266 @@
                     opacity: trackStyle.opacity
                 });
             }
-            if (userMarker) {
-                userMarker.setStyle({
-                    fillColor: trackStyle.color
-                });
-            }
-        }
-
-        // Set Auto-Follow State
-        function setAutoFollow(val) {
-            autoFollowMode = Boolean(val);
-            const sw = document.getElementById('toggle-autofollow-switch');
-            const icon = document.getElementById('autofollow-icon');
-            if (sw) sw.checked = autoFollowMode;
-            if (icon) {
-                if (autoFollowMode) {
-                    icon.className = 'w-4 h-4 text-emerald-400';
-                } else {
-                    icon.className = 'w-4 h-4 text-slate-400';
+            if (currentMarker) {
+                const el = currentMarker.getElement();
+                if (el) {
+                    const dot = el.querySelector('.pulse-dot');
+                    if (dot) dot.style.backgroundColor = trackStyle.color;
                 }
             }
-        }
 
-        async function requestWakeLock() {
             try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                localStorage.setItem('gps_track_style_v3', JSON.stringify(trackStyle));
+            } catch (e) {
+                console.warn('Style storage failed', e);
+            }
+        }
+
+        function loadSavedTrackStyle() {
+            try {
+                const saved = localStorage.getItem('gps_track_style_v3');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    applyTrackStyle(parsed);
+                    return;
                 }
-            } catch (err) {
-                console.warn('Wake Lock error:', err);
-            }
-        }
-
-        function releaseWakeLock() {
-            if (wakeLock) {
-                wakeLock.release().catch(() => {});
-                wakeLock = null;
-            }
-        }
-
-        function toggleTracking() {
-            if (isTracking || isSimulating) {
-                stopTracking();
-            } else {
-                startTracking();
-            }
-        }
-
-        function startTracking() {
-            if (!navigator.geolocation) {
-                showToast('お使いの環境では位置情報がサポートされていません', 'alert-circle');
-                return;
-            }
-
-            isTracking = true;
-            updateTrackingUI(true);
-            requestWakeLock();
-
-            const geoOptions = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 2000
-            };
-
-            watchPositionId = navigator.geolocation.watchPosition(
-                handlePositionSuccess,
-                handlePositionError,
-                geoOptions
-            );
-
-            showToast('GPSトラッキングを開始しました', 'play');
-        }
-
-        function stopTracking() {
-            if (watchPositionId !== null) {
-                navigator.geolocation.clearWatch(watchPositionId);
-                watchPositionId = null;
-            }
-            if (isSimulating) {
-                clearInterval(simulationInterval);
-                simulationInterval = null;
-                isSimulating = false;
-            }
-            isTracking = false;
-            updateTrackingUI(false);
-            releaseWakeLock();
-            showToast('トラッキングを停止しました', 'pause');
-        }
-
-        function handlePositionSuccess(pos) {
-            const coords = pos.coords;
-            const newPoint = {
-                lat: coords.latitude,
-                lng: coords.longitude,
-                time: new Date(pos.timestamp).toISOString(),
-                speed: coords.speed !== null ? Math.max(0, coords.speed * 3.6) : 0, // km/h
-                accuracy: coords.accuracy || 0
-            };
-
-            addTrackPoint(newPoint);
-        }
-
-        function handlePositionError(err) {
-            console.warn('GPS Error (Code ' + err.code + '):', err.message);
-            const statusIndicator = document.getElementById('gps-status-indicator');
-            if (statusIndicator) {
-                statusIndicator.textContent = '測位エラー';
-                statusIndicator.className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40';
-            }
-
-            if (err.code === 1) {
-                showToast('位置情報の利用が許可されていません', 'alert-circle');
-                stopTracking();
-            } else if (err.code === 2 || err.code === 3) {
-                showToast('GPS信号を受信できません。通常測位で再試行します', 'info');
-            }
-        }
-
-        function addTrackPoint(pt) {
-            trackPoints.push(pt);
-
-            // Update Polyline
-            const latlng = [pt.lat, pt.lng];
-            trackPolyline.addLatLng(latlng);
-
-            // Update / add user marker
-            if (!map.hasLayer(userMarker)) {
-                userMarker.addTo(map);
-            }
-            userMarker.setLatLng(latlng);
-
-            // Auto-center map if enabled
-            if (autoFollowMode) {
-                map.setView(latlng, map.getZoom(), { animate: true });
-            }
-
-            // Update Statistics
-            updateStats(pt);
-
-            // Persist locally
-            saveTrackToStorage();
-        }
-
-        function updateStats(latestPt) {
-            const statDist = document.getElementById('stat-distance');
-            const statSpeed = document.getElementById('stat-speed');
-            const statAcc = document.getElementById('stat-accuracy');
-            const statPoints = document.getElementById('stat-points');
-
-            const totalDistKm = calculateTotalDistance();
-            if (statDist) statDist.textContent = `${totalDistKm.toFixed(2)} km`;
-            if (statSpeed) statSpeed.textContent = `${(latestPt.speed || 0).toFixed(1)} km/h`;
-            if (statAcc) statAcc.textContent = `±${Math.round(latestPt.accuracy || 0)}m`;
-            if (statPoints) statPoints.textContent = `${trackPoints.length} 点`;
-        }
-
-        function calculateTotalDistance() {
-            let total = 0;
-            for (let i = 1; i < trackPoints.length; i++) {
-                total += calculateDistanceBetween(
-                    trackPoints[i - 1].lat, trackPoints[i - 1].lng,
-                    trackPoints[i].lat, trackPoints[i].lng
-                );
-            }
-            return total;
-        }
-
-        function calculateDistanceBetween(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Earth radius in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
-        function updateTrackingUI(recording) {
-            const btn = document.getElementById('btn-toggle-tracking');
-            const badge = document.getElementById('recording-badge');
-            const statusIndicator = document.getElementById('gps-status-indicator');
-
-            if (recording) {
-                btn.className = 'col-span-1 bg-rose-600 hover:bg-rose-500 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-rose-900/30 transition';
-                btn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i><span>停止</span>';
-                if (badge) badge.classList.remove('hidden');
-                if (statusIndicator) {
-                    statusIndicator.textContent = '記録中';
-                    statusIndicator.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse';
-                }
-            } else {
-                btn.className = 'col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-900/30 transition';
-                btn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i><span>トラッキング開始</span>';
-                if (badge) badge.classList.add('hidden');
-                if (statusIndicator) {
-                    statusIndicator.textContent = '待機中';
-                    statusIndicator.className = 'text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 border border-slate-600';
-                }
-            }
-            lucide.createIcons();
+            } catch (e) {}
+            // デフォルトスタイルを適用（赤, 10px）
+            applyTrackStyle(trackStyle);
         }
 
         function saveTrackToStorage() {
             try {
-                localStorage.setItem(STORAGE_KEY_TRACK, JSON.stringify(trackPoints));
+                localStorage.setItem('gps_recorded_track_v2', JSON.stringify({
+                    points: trackPoints,
+                    totalDistanceKm,
+                    maxSpeedKmh
+                }));
             } catch (e) {
-                console.warn('Storage save failed', e);
+                console.warn('Storage save failed (quota exceeded?)', e);
             }
         }
 
-        function restoreStoredTrack() {
+        function restoreSavedTrack() {
             try {
-                const stored = localStorage.getItem(STORAGE_KEY_TRACK);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        trackPoints = parsed;
-                        const latlngs = trackPoints.map(p => [p.lat, p.lng]);
-                        trackPolyline.setLatLngs(latlngs);
+                const raw = localStorage.getItem('gps_recorded_track_v2');
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (data && Array.isArray(data.points) && data.points.length > 0) {
+                    trackPoints = data.points;
+                    totalDistanceKm = data.totalDistanceKm || 0;
+                    maxSpeedKmh = data.maxSpeedKmh || 0;
 
-                        const lastPoint = trackPoints[trackPoints.length - 1];
-                        if (lastPoint) {
-                            userMarker.setLatLng([lastPoint.lat, lastPoint.lng]).addTo(map);
-                            map.setView([lastPoint.lat, lastPoint.lng], 14);
-                            updateStats(lastPoint);
-                        }
-                        showToast(`保存されていた軌跡 (${trackPoints.length}点) を復元しました`, 'check-circle');
-                    }
+                    const latlngs = trackPoints.map(p => [p.lat, p.lng]);
+                    trackPolyline.setLatLngs(latlngs);
+
+                    const last = trackPoints[trackPoints.length - 1];
+                    updateCurrentMarker(last.lat, last.lng);
+                    updateStatsUI(last.speed || 0);
+
+                    // 軌跡全体が収まるようにズーム調整
+                    map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40], maxZoom: 16 });
+                    showToast(`前回の移動軌跡（${trackPoints.length}点）を復元しました`, 'info');
                 }
             } catch (e) {
-                console.warn('Storage restore failed', e);
+                console.warn('Restore failed:', e);
             }
         }
 
-        function clearTrack() {
-            if (trackPoints.length === 0) return;
-            openModal('軌跡データの消去', '記録した移動軌跡と統計データをすべてリセットしますか？この操作は取り消せません。', () => {
-                trackPoints = [];
-                trackPolyline.setLatLngs([]);
-                if (map.hasLayer(userMarker)) {
-                    map.removeLayer(userMarker);
-                }
-                localStorage.removeItem(STORAGE_KEY_TRACK);
-
-                document.getElementById('stat-distance').textContent = '0.00 km';
-                document.getElementById('stat-speed').textContent = '0.0 km/h';
-                document.getElementById('stat-accuracy').textContent = '-';
-                document.getElementById('stat-points').textContent = '0 点';
-
-                showToast('移動軌跡をクリアしました', 'trash-2');
-            });
+        function clearTrackData() {
+            if (demoInterval) {
+                clearInterval(demoInterval);
+                demoInterval = null;
+            }
+            trackPoints = [];
+            totalDistanceKm = 0;
+            maxSpeedKmh = 0;
+            trackPolyline.setLatLngs([]);
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+                currentMarker = null;
+            }
+            updateStatsUI(0);
+            localStorage.removeItem('gps_recorded_track_v2');
+            showToast('軌跡データを消去しました', 'success');
         }
 
-        // Simulation Demo Generator for Desktops / Offline Testing
-        function toggleSimulation() {
-            if (isSimulating) {
-                stopTracking();
+        function toggleDemoDrive() {
+            if (demoInterval) {
+                clearInterval(demoInterval);
+                demoInterval = null;
+                showToast('デモ走行を停止しました', 'info');
                 return;
             }
-            if (isTracking) {
-                stopTracking();
+
+            let centerLat = DEFAULT_LAT;
+            let centerLng = DEFAULT_LNG;
+            if (trackPoints.length > 0) {
+                const last = trackPoints[trackPoints.length - 1];
+                centerLat = last.lat;
+                centerLng = last.lng;
             }
 
-            isSimulating = true;
-            updateTrackingUI(true);
+            let angle = 0;
+            showToast('PC用デモ走行テストを開始しました', 'success');
 
-            let currentLat = trackPoints.length > 0 ? trackPoints[trackPoints.length - 1].lat : DEFAULT_LAT;
-            let currentLng = trackPoints.length > 0 ? trackPoints[trackPoints.length - 1].lng : DEFAULT_LNG;
-            let angle = Math.random() * Math.PI * 2;
+            demoInterval = setInterval(() => {
+                angle += 0.08;
+                const lat = centerLat + Math.sin(angle) * 0.003 + (Math.random() - 0.5) * 0.0003;
+                const lng = centerLng + Math.cos(angle) * 0.004 + (Math.random() - 0.5) * 0.0003;
+                const speed = 25 + Math.sin(angle * 3) * 15;
 
-            showToast('デモ走行シミュレーションを開始しました', 'play-circle');
-
-            simulationInterval = setInterval(() => {
-                angle += (Math.random() - 0.5) * 0.4;
-                const distanceStep = 0.0003 + Math.random() * 0.0002;
-                currentLat += Math.sin(angle) * distanceStep;
-                currentLng += Math.cos(angle) * distanceStep;
-
-                const simulatedPoint = {
-                    lat: currentLat,
-                    lng: currentLng,
-                    time: new Date().toISOString(),
-                    speed: 25 + Math.random() * 15,
-                    accuracy: 5 + Math.round(Math.random() * 8)
-                };
-
-                addTrackPoint(simulatedPoint);
-            }, 1000);
-        }
-
-        function parseKmlStyleMap(xmlDoc) {
-            const styles = {};
-            if (!xmlDoc) return styles;
-
-            // Extract basic Style tags
-            xmlDoc.querySelectorAll('Style').forEach(styleEl => {
-                const id = styleEl.getAttribute('id');
-                if (!id) return;
-
-                const lineStyle = styleEl.querySelector('LineStyle');
-                const polyStyle = styleEl.querySelector('PolyStyle');
-
-                let lineHex = null;
-                let lineWidth = null;
-                let lineOpacity = null;
-                let fillHex = null;
-                let fillOpacity = null;
-
-                if (lineStyle) {
-                    const colorEl = lineStyle.querySelector('color');
-                    const widthEl = lineStyle.querySelector('width');
-                    if (colorEl) {
-                        const parsed = kmlColorToHex(colorEl.textContent);
-                        if (parsed) {
-                            lineHex = parsed.hex;
-                            lineOpacity = parsed.opacity;
-                        }
-                    }
-                    if (widthEl) {
-                        lineWidth = parseFloat(widthEl.textContent) || null;
-                    }
-                }
-
-                if (polyStyle) {
-                    const colorEl = polyStyle.querySelector('color');
-                    if (colorEl) {
-                        const parsed = kmlColorToHex(colorEl.textContent);
-                        if (parsed) {
-                            fillHex = parsed.hex;
-                            fillOpacity = parsed.opacity;
-                        }
-                    }
-                }
-
-                styles[`#${id}`] = {
-                    color: lineHex,
-                    weight: lineWidth,
-                    opacity: lineOpacity,
-                    fillColor: fillHex,
-                    fillOpacity: fillOpacity
-                };
-            });
-
-            // Extract StyleMap references
-            xmlDoc.querySelectorAll('StyleMap').forEach(styleMapEl => {
-                const mapId = styleMapEl.getAttribute('id');
-                if (!mapId) return;
-
-                let targetStyleUrl = null;
-                const pairs = styleMapEl.querySelectorAll('Pair');
-                pairs.forEach(pair => {
-                    const keyEl = pair.querySelector('key');
-                    const urlEl = pair.querySelector('styleUrl');
-                    if (keyEl && keyEl.textContent.trim() === 'normal' && urlEl) {
-                        targetStyleUrl = urlEl.textContent.trim();
-                    }
+                appendTrackPoint({
+                    lat,
+                    lng,
+                    alt: 230 + Math.sin(angle) * 15,
+                    speed: Math.max(5, speed),
+                    accuracy: 4.5,
+                    timestamp: new Date().toISOString()
                 });
+            }, 1200);
+        }
 
-                if (!targetStyleUrl && pairs.length > 0) {
-                    const firstUrl = pairs[0].querySelector('styleUrl');
-                    if (firstUrl) targetStyleUrl = firstUrl.textContent.trim();
+        async function handleFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const ext = file.name.split('.').pop().toLowerCase();
+                try {
+                    if (ext === 'kml') {
+                        const text = await file.text();
+                        loadKmlContent(text, file.name);
+                    } else if (ext === 'kmz') {
+                        await loadKmzContent(file);
+                    } else {
+                        showToast(`未対応のファイル形式です: ${file.name}`, 'error');
+                    }
+                } catch (err) {
+                    console.error('File parsing error:', err);
+                    showToast(`読み込み失敗 (${file.name}): ${err.message}`, 'error');
                 }
+            }
+        }
 
-                if (targetStyleUrl && styles[targetStyleUrl]) {
-                    styles[`#${mapId}`] = styles[targetStyleUrl];
+        async function loadKmzContent(file) {
+            const zip = new JSZip();
+            const loadedZip = await zip.loadAsync(file);
+            let kmlFile = loadedZip.file(/\.kml$/i)[0];
+            if (!kmlFile) {
+                kmlFile = loadedZip.file('doc.kml');
+            }
+            if (!kmlFile) {
+                throw new Error('KMZ内に有効なKMLファイルが見つかりません');
+            }
+            const kmlText = await kmlFile.async('text');
+            loadKmlContent(kmlText, file.name);
+        }
+
+        function kmlColorToHex(kmlColor) {
+            if (!kmlColor || typeof kmlColor !== 'string') return null;
+            const clean = kmlColor.trim().replace(/^#/, '');
+            if (clean.length === 8) {
+                const a = parseInt(clean.substring(0, 2), 16) / 255;
+                const b = clean.substring(2, 4);
+                const g = clean.substring(4, 6);
+                const r = clean.substring(6, 8);
+                return { hex: `#${r}${g}${b}`.toLowerCase(), opacity: Math.round(a * 100) / 100 };
+            } else if (clean.length === 6) {
+                return { hex: `#${clean}`.toLowerCase(), opacity: 1 };
+            }
+            return null;
+        }
+
+        function extractKmlStyleMap(kmlDoc) {
+            const styleCatalog = {};
+            const styles = kmlDoc.querySelectorAll('Style');
+            styles.forEach(s => {
+                const id = s.getAttribute('id');
+                if (!id) return;
+                const lineStyle = s.querySelector('LineStyle');
+                const polyStyle = s.querySelector('PolyStyle');
+                const parsed = {};
+                if (lineStyle) {
+                    const c = lineStyle.querySelector('color')?.textContent;
+                    const w = lineStyle.querySelector('width')?.textContent;
+                    if (c) {
+                        const conv = kmlColorToHex(c);
+                        if (conv) { parsed.color = conv.hex; parsed.opacity = conv.opacity; }
+                    }
+                    if (w) parsed.weight = parseFloat(w);
+                }
+                if (polyStyle) {
+                    const c = polyStyle.querySelector('color')?.textContent;
+                    if (c) {
+                        const conv = kmlColorToHex(c);
+                        if (conv) { parsed.fillColor = conv.hex; parsed.fillOpacity = conv.opacity; }
+                    }
+                }
+                styleCatalog[`#${id}`] = parsed;
+                styleCatalog[id] = parsed;
+            });
+
+            const styleMaps = kmlDoc.querySelectorAll('StyleMap');
+            styleMaps.forEach(sm => {
+                const id = sm.getAttribute('id');
+                if (!id) return;
+                const pairs = sm.querySelectorAll('Pair');
+                let targetUrl = null;
+                pairs.forEach(p => {
+                    const key = p.querySelector('key')?.textContent?.trim();
+                    const url = p.querySelector('styleUrl')?.textContent?.trim();
+                    if (key === 'normal' && url) targetUrl = url;
+                    else if (!targetUrl && url) targetUrl = url;
+                });
+                if (targetUrl && styleCatalog[targetUrl]) {
+                    styleCatalog[`#${id}`] = styleCatalog[targetUrl];
+                    styleCatalog[id] = styleCatalog[targetUrl];
                 }
             });
 
-            return styles;
+            return styleCatalog;
         }
 
-        async function processUploadedFile(file) {
-            showToast(`ファイル読み込み中: ${file.name}`, 'loader');
-            try {
-                const ext = file.name.split('.').pop().toLowerCase();
-                let kmlText = '';
-
-                if (ext === 'kmz') {
-                    // Extract KMZ with JSZip
-                    const zip = await JSZip.loadAsync(file);
-                    let kmlFileInZip = null;
-
-                    zip.forEach((relativePath, zipEntry) => {
-                        if (relativePath.toLowerCase().endsWith('.kml') && !kmlFileInZip) {
-                            kmlFileInZip = zipEntry;
-                        }
-                    });
-
-                    if (!kmlFileInZip) {
-                        throw new Error('KMZ内に有効なKMLファイルが見つかりませんでした');
-                    }
-                    kmlText = await kmlFileInZip.async('string');
-                } else if (ext === 'kml') {
-                    kmlText = await file.text();
-                } else {
-                    throw new Error('対応していないファイル形式です (.kml, .kmz のみ)');
-                }
-
-                renderKmlOnMap(kmlText, file.name);
-            } catch (err) {
-                console.error(err);
-                showToast(`エラー: ${err.message}`, 'alert-circle');
-            }
-        }
-
-        function renderKmlOnMap(kmlString, fileName) {
+        function loadKmlContent(kmlText, fileName) {
             const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(kmlString, 'text/xml');
-
-            if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-                throw new Error('KMLのXML構文解析に失敗しました');
+            const kmlDom = parser.parseFromString(kmlText, 'text/xml');
+            const parseError = kmlDom.querySelector('parsererror');
+            if (parseError) {
+                throw new Error('KMLのXMLパースに失敗しました');
             }
 
-            const kmlStyles = parseKmlStyleMap(xmlDoc);
-            const geojson = toGeoJSON.kml(xmlDoc);
-
+            const styleCatalog = extractKmlStyleMap(kmlDom);
+            const geojson = toGeoJSON.kml(kmlDom);
             if (!geojson || !geojson.features || geojson.features.length === 0) {
-                showToast('地物（ルートや地点）が見つかりませんでした', 'info');
-                return;
+                throw new Error('地物（ルート・ピン情報）が含まれていません');
             }
 
-            // Find representative primary style
-            let initialColor = '#3b82f6';
+            // 代表スタイルの検出
+            let initialColor = '#0284c7';
             let initialWeight = 4;
             let initialOpacity = 0.85;
 
-            for (const key in kmlStyles) {
-                if (kmlStyles[key].color) {
-                    initialColor = kmlStyles[key].color;
-                    if (kmlStyles[key].weight) initialWeight = Math.min(12, Math.max(2, kmlStyles[key].weight));
-                    if (kmlStyles[key].opacity !== null) initialOpacity = kmlStyles[key].opacity;
+            for (const key in styleCatalog) {
+                if (styleCatalog[key]?.color) {
+                    initialColor = styleCatalog[key].color;
+                    if (styleCatalog[key].weight) initialWeight = Math.min(10, Math.max(2, styleCatalog[key].weight));
+                    if (styleCatalog[key].opacity !== null) initialOpacity = styleCatalog[key].opacity;
                     break;
                 }
             }
 
-            const layerId = 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            function resolveFeatureStyle(feature) {
+                const styleUrl = feature.properties?.styleUrl;
+                const direct = (styleUrl && styleCatalog[styleUrl]) ? styleCatalog[styleUrl] : {};
+                return {
+                    color: direct.color || feature.properties?.stroke || initialColor,
+                    weight: direct.weight || feature.properties?.['stroke-width'] || initialWeight,
+                    opacity: direct.opacity !== undefined ? direct.opacity : initialOpacity,
+                    fillColor: direct.fillColor || direct.color || feature.properties?.fill || initialColor,
+                    fillOpacity: direct.fillOpacity !== undefined ? direct.fillOpacity : (initialOpacity * 0.4)
+                };
+            }
 
-            const resolveFeatureStyle = function(feature) {
-                let st = { color: initialColor, weight: initialWeight, opacity: initialOpacity, fillColor: initialColor, fillOpacity: initialOpacity * 0.6 };
-                const styleUrl = feature.properties && feature.properties.styleUrl;
-                if (styleUrl && kmlStyles[styleUrl]) {
-                    const found = kmlStyles[styleUrl];
-                    if (found.color) st.color = found.color;
-                    if (found.weight) st.weight = Math.min(14, Math.max(1, found.weight));
-                    if (found.opacity !== null) st.opacity = found.opacity;
-                    if (found.fillColor) st.fillColor = found.fillColor;
-                    if (found.fillOpacity !== null) st.fillOpacity = found.fillOpacity;
-                }
-                return st;
-            };
-
+            // GeoJSON レイヤー構築
             const geoJsonLayer = L.geoJSON(geojson, {
                 style: function(feature) {
                     const st = resolveFeatureStyle(feature);
@@ -1032,30 +1077,31 @@
                         color: st.color,
                         weight: st.weight,
                         opacity: st.opacity,
-                        fillColor: st.fillColor || st.color,
-                        fillOpacity: st.fillOpacity !== null ? st.fillOpacity : 0.4
+                        fillColor: st.fillColor,
+                        fillOpacity: st.fillOpacity
                     };
                 },
                 pointToLayer: function(feature, latlng) {
                     const st = resolveFeatureStyle(feature);
-                    const markerRadius = Math.max(5, Math.min(12, (st.weight || initialWeight) + 2));
+                    const markerColor = st.color;
+                    const markerRadius = Math.max(5, Math.min(12, st.weight + 2));
 
                     const marker = L.circleMarker(latlng, {
                         radius: markerRadius,
-                        fillColor: st.color,
+                        fillColor: markerColor,
                         color: '#ffffff',
                         weight: 2,
                         opacity: 1,
                         fillOpacity: st.opacity
                     });
 
-                    // Add permanent label if feature has a name
-                    const pinName = feature.properties && feature.properties.name;
+                    // KML内の地点名称（name）が存在する場合は常時表示ラベルを付与
+                    const pinName = feature.properties?.name;
                     if (pinName && String(pinName).trim().length > 0) {
                         marker.bindTooltip(String(pinName).trim(), {
                             permanent: true,
                             direction: 'top',
-                            offset: [0, -(markerRadius + 2)],
+                            offset: [0, -(markerRadius + 3)],
                             className: 'kml-pin-label'
                         });
                     }
@@ -1077,272 +1123,314 @@
             const bounds = geoJsonLayer.getBounds();
             if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [40, 40] });
+                setAutoFollow(false);
             }
 
-            const layerRecord = {
+            const layerId = 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const layerItem = {
                 id: layerId,
                 name: fileName,
                 layer: geoJsonLayer,
                 count: geojson.features.length,
-                bounds: bounds,
-                style: {
-                    color: initialColor,
-                    weight: initialWeight,
-                    opacity: initialOpacity
-                }
+                color: initialColor,
+                weight: initialWeight,
+                opacity: initialOpacity,
+                visible: true
             };
 
-            importedLayers.push(layerRecord);
-            updateLayerListUI();
-            showToast(`${fileName} を読み込みました (${geojson.features.length} 地物)`, 'check');
+            importedLayers.push(layerItem);
+            renderLayerList();
+            showToast(`${fileName} を読み込みました（${geojson.features.length} 地物）`, 'success');
         }
 
-        function updateLayerListUI() {
-            const listEl = document.getElementById('layer-list');
-            const countEl = document.getElementById('layer-count');
-            if (countEl) countEl.textContent = `${importedLayers.length} 件`;
+        function renderLayerList() {
+            const container = document.getElementById('layer-list');
+            const noMsg = document.getElementById('no-layers-msg');
+            const countBadge = document.getElementById('layer-count-badge');
 
-            if (!listEl) return;
-            listEl.innerHTML = '';
+            countBadge.textContent = `${importedLayers.length} ファイル`;
 
             if (importedLayers.length === 0) {
-                listEl.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-2">読み込まれたレイヤーはありません</p>';
+                container.innerHTML = '<div id="no-layers-msg" class="text-center py-3 text-xs text-slate-500">インポートされたレイヤーはありません</div>';
                 return;
             }
 
-            importedLayers.forEach(item => {
-                const row = document.createElement('div');
-                row.className = 'bg-slate-900/70 border border-slate-700/70 rounded-lg p-2 space-y-2';
-
-                row.innerHTML = `
+            container.innerHTML = '';
+            importedLayers.forEach((item) => {
+                const el = document.createElement('div');
+                el.className = 'bg-slate-900/90 rounded-xl p-2.5 border border-slate-700/60 space-y-2';
+                el.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2 min-w-0">
-                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.style.color}"></span>
-                            <span class="text-xs font-medium text-slate-200 truncate cursor-pointer hover:text-emerald-400" title="${item.name}">${item.name}</span>
+                        <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+                            <span class="w-3 h-3 rounded-full shrink-0 border border-white/40" style="background-color: ${item.color};"></span>
+                            <span class="text-xs font-semibold text-slate-200 truncate" title="${item.name}">${item.name}</span>
+                            <span class="text-[10px] text-slate-400 font-mono shrink-0">(${item.count})</span>
                         </div>
-                        <div class="flex items-center space-x-1 flex-shrink-0">
-                            <button data-action="toggle-style" data-id="${item.id}" class="p-1 text-slate-400 hover:text-white rounded" title="スタイル変更">
-                                <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button class="btn-toggle-vis p-1 text-slate-400 hover:text-white rounded" title="表示/非表示">
+                                <i data-lucide="${item.visible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>
                             </button>
-                            <button data-action="zoom" data-id="${item.id}" class="p-1 text-slate-400 hover:text-white rounded" title="全体表示">
-                                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                            <button class="btn-toggle-style p-1 text-slate-400 hover:text-white rounded" title="スタイル編集">
+                                <i data-lucide="palette" class="w-3.5 h-3.5 text-sky-400"></i>
                             </button>
-                            <button data-action="remove" data-id="${item.id}" class="p-1 text-slate-400 hover:text-rose-400 rounded" title="削除">
-                                <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                            <button class="btn-remove-layer p-1 text-slate-400 hover:text-rose-400 rounded" title="削除">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             </button>
                         </div>
                     </div>
-                    <!-- Layer Style Panel (Accordion) -->
-                    <div id="style-panel-${item.id}" class="hidden pt-2 border-t border-slate-800 space-y-2 text-[11px]">
+
+                    <!-- スタイル編集サブパネル -->
+                    <div class="layer-style-subpanel hidden pt-2 border-t border-slate-800 space-y-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-slate-400">表示色:</span>
-                            <input type="color" data-style-id="${item.id}" data-prop="color" value="${item.style.color}" class="w-6 h-6 rounded bg-transparent cursor-pointer">
-                        </div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between text-slate-400">
-                                <span>線の太さ:</span>
-                                <span id="weight-label-${item.id}" class="font-mono text-slate-300">${item.style.weight}px</span>
+                            <span class="text-[10px] text-slate-400">カラー</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="color" value="${item.color}" class="input-layer-color w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                <span class="lbl-layer-color text-[10px] font-mono text-slate-300">${item.color}</span>
                             </div>
-                            <input type="range" data-style-id="${item.id}" data-prop="weight" min="1" max="14" value="${item.style.weight}" class="w-full accent-emerald-500 cursor-pointer">
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] text-slate-400 shrink-0">太さ</span>
+                            <input type="range" min="1" max="14" value="${item.weight}" class="input-layer-weight w-28 accent-sky-400 h-1 bg-slate-700 rounded cursor-pointer">
+                            <span class="lbl-layer-weight text-[10px] font-mono text-slate-300 w-8 text-right">${item.weight}px</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] text-slate-400 shrink-0">不透明度</span>
+                            <input type="range" min="10" max="100" value="${Math.round(item.opacity * 100)}" class="input-layer-opacity w-28 accent-sky-400 h-1 bg-slate-700 rounded cursor-pointer">
+                            <span class="lbl-layer-opacity text-[10px] font-mono text-slate-300 w-8 text-right">${Math.round(item.opacity * 100)}%</span>
                         </div>
                     </div>
                 `;
 
-                listEl.appendChild(row);
+                // 表示非表示
+                el.querySelector('.btn-toggle-vis').addEventListener('click', () => {
+                    item.visible = !item.visible;
+                    if (item.visible) {
+                        map.addLayer(item.layer);
+                    } else {
+                        map.removeLayer(item.layer);
+                    }
+                    renderLayerList();
+                });
+
+                // スタイルパネル開閉
+                el.querySelector('.btn-toggle-style').addEventListener('click', () => {
+                    const subpanel = el.querySelector('.layer-style-subpanel');
+                    subpanel.classList.toggle('hidden');
+                });
+
+                // スタイル調整ハンドラ
+                const colorInput = el.querySelector('.input-layer-color');
+                const weightInput = el.querySelector('.input-layer-weight');
+                const opacityInput = el.querySelector('.input-layer-opacity');
+
+                function updateSubLayerStyle() {
+                    item.color = colorInput.value;
+                    item.weight = parseInt(weightInput.value, 10);
+                    item.opacity = parseInt(opacityInput.value, 10) / 100;
+
+                    el.querySelector('.lbl-layer-color').textContent = item.color;
+                    el.querySelector('.lbl-layer-weight').textContent = `${item.weight}px`;
+                    el.querySelector('.lbl-layer-opacity').textContent = `${Math.round(item.opacity * 100)}%`;
+
+                    item.layer.setStyle({
+                        color: item.color,
+                        weight: item.weight,
+                        opacity: item.opacity,
+                        fillColor: item.color,
+                        fillOpacity: item.opacity * 0.4
+                    });
+                    item.layer.eachLayer((sub) => {
+                        if (sub instanceof L.CircleMarker) {
+                            sub.setStyle({ fillColor: item.color, fillOpacity: item.opacity });
+                        }
+                    });
+                }
+
+                colorInput.addEventListener('input', updateSubLayerStyle);
+                weightInput.addEventListener('input', updateSubLayerStyle);
+                opacityInput.addEventListener('input', updateSubLayerStyle);
+
+                // 削除
+                el.querySelector('.btn-remove-layer').addEventListener('click', () => {
+                    map.removeLayer(item.layer);
+                    importedLayers = importedLayers.filter(l => l.id !== item.id);
+                    renderLayerList();
+                    showToast(`${item.name} を削除しました`, 'info');
+                });
+
+                container.appendChild(el);
             });
 
             lucide.createIcons();
-            attachLayerListEvents();
         }
 
-        function attachLayerListEvents() {
-            document.querySelectorAll('#layer-list button[data-action]').forEach(btn => {
-                btn.onclick = function() {
-                    const action = this.getAttribute('data-action');
-                    const id = this.getAttribute('data-id');
-                    const item = importedLayers.find(l => l.id === id);
-                    if (!item) return;
-
-                    if (action === 'zoom') {
-                        if (item.bounds.isValid()) {
-                            map.fitBounds(item.bounds, { padding: [30, 30] });
-                        }
-                    } else if (action === 'remove') {
-                        map.removeLayer(item.layer);
-                        importedLayers = importedLayers.filter(l => l.id !== id);
-                        updateLayerListUI();
-                        showToast(`${item.name} を削除しました`, 'trash');
-                    } else if (action === 'toggle-style') {
-                        const panel = document.getElementById(`style-panel-${id}`);
-                        if (panel) panel.classList.toggle('hidden');
-                    }
-                };
-            });
-
-            // Color & weight change listeners for imported layers
-            document.querySelectorAll('#layer-list input[data-style-id]').forEach(input => {
-                input.oninput = function() {
-                    const id = this.getAttribute('data-style-id');
-                    const prop = this.getAttribute('data-prop');
-                    const item = importedLayers.find(l => l.id === id);
-                    if (!item) return;
-
-                    if (prop === 'color') {
-                        item.style.color = this.value;
-                    } else if (prop === 'weight') {
-                        item.style.weight = parseInt(this.value, 10);
-                        const label = document.getElementById(`weight-label-${id}`);
-                        if (label) label.textContent = `${this.value}px`;
-                    }
-
-                    // Update Leaflet layer live styles
-                    item.layer.setStyle({
-                        color: item.style.color,
-                        weight: item.style.weight,
-                        fillColor: item.style.color
-                    });
-                    item.layer.eachLayer(l => {
-                        if (l instanceof L.CircleMarker) {
-                            l.setStyle({ fillColor: item.style.color });
-                        }
-                    });
-
-                    // Update swatch in layer row
-                    const swatch = this.closest('.bg-slate-900\\/70').querySelector('.w-2\\.5');
-                    if (swatch) swatch.style.backgroundColor = item.style.color;
-                };
-            });
-        }
-
-        function generateExportFilename(extension) {
+        function getExportFilename(extension) {
+            let date = new Date();
+            if (trackPoints.length > 0 && trackPoints[0].timestamp) {
+                date = new Date(trackPoints[0].timestamp);
+            }
             const pad = (n) => String(n).padStart(2, '0');
-            let d = new Date();
-            if (trackPoints.length > 0 && trackPoints[0].time) {
-                d = new Date(trackPoints[0].time);
-            }
-            const dateStr = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-            return `track_${dateStr}.${extension}`;
+            const Y = date.getFullYear();
+            const M = pad(date.getMonth() + 1);
+            const D = pad(date.getDate());
+            const h = pad(date.getHours());
+            const m = pad(date.getMinutes());
+            const s = pad(date.getSeconds());
+            return `track_${Y}${M}${D}_${h}${m}${s}.${extension}`;
         }
 
-        function exportGPX() {
-            if (trackPoints.length === 0) {
-                showToast('エクスポートする移動軌跡がありません', 'info');
-                return;
-            }
-            let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-            gpx += `<gpx version="1.1" creator="GPS Tracker Web App" xmlns="http://www.topografix.com/GPX/1/1">\n`;
-            gpx += `  <trk>\n    <name>Track Log</name>\n    <trkseg>\n`;
+        function generateGpxXml() {
+            const timeStr = trackPoints.length > 0 ? trackPoints[0].timestamp : new Date().toISOString();
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+            xml += `<gpx version="1.1" creator="GPS Tracker App" xmlns="http://www.topografix.com/GPX/1/1">\n`;
+            xml += `  <metadata>\n    <name>GPS Track Export</name>\n    <time>${timeStr}</time>\n  </metadata>\n`;
+            xml += `  <trk>\n    <name>Recorded Track</name>\n    <trkseg>\n`;
             trackPoints.forEach(p => {
-                gpx += `      <trkpt lat="${p.lat}" lon="${p.lng}">\n`;
-                gpx += `        <time>${p.time}</time>\n`;
-                if (p.speed) gpx += `        <speed>${(p.speed / 3.6).toFixed(2)}</speed>\n`;
-                gpx += `      </trkpt>\n`;
+                xml += `      <trkpt lat="${p.lat}" lon="${p.lng}">\n`;
+                if (p.alt) xml += `        <ele>${p.alt.toFixed(1)}</ele>\n`;
+                if (p.timestamp) xml += `        <time>${p.timestamp}</time>\n`;
+                if (p.speed) xml += `        <extensions><speed>${(p.speed / 3.6).toFixed(2)}</speed></extensions>\n`;
+                xml += `      </trkpt>\n`;
             });
-            gpx += `    </trkseg>\n  </trk>\n</gpx>`;
-
-            downloadFile(gpx, generateExportFilename('gpx'), 'application/gpx+xml');
+            xml += `    </trkseg>\n  </trk>\n</gpx>`;
+            return xml;
         }
 
-        function exportKML() {
-            if (trackPoints.length === 0) {
-                showToast('エクスポートする移動軌跡がありません', 'info');
-                return;
-            }
+        function generateKmlXml() {
             const cleanHex = trackStyle.color.replace('#', '');
-            const kmlLineColor = `ff${cleanHex.substring(4, 6)}${cleanHex.substring(2, 4)}${cleanHex.substring(0, 2)}`;
+            const kmlAlpha = Math.round(trackStyle.opacity * 255).toString(16).padStart(2, '0');
+            const kmlColor = `${kmlAlpha}${cleanHex.substring(4, 6)}${cleanHex.substring(2, 4)}${cleanHex.substring(0, 2)}`;
 
-            let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-            kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n`;
-            kml += `    <name>GPS Track Log</name>\n`;
-            kml += `    <Style id="trackStyle">\n      <LineStyle>\n`;
-            kml += `        <color>${kmlLineColor}</color>\n`;
-            kml += `        <width>${trackStyle.weight}</width>\n`;
-            kml += `      </LineStyle>\n    </Style>\n`;
-            kml += `    <Placemark>\n      <name>Recorded Track</name>\n      <styleUrl>#trackStyle</styleUrl>\n`;
-            kml += `      <LineString>\n        <coordinates>\n`;
-
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+            xml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>GPS Recorded Track</name>\n`;
+            xml += `    <Style id="trackStyle">\n      <LineStyle>\n        <color>${kmlColor}</color>\n        <width>${trackStyle.weight}</width>\n      </LineStyle>\n    </Style>\n`;
+            xml += `    <Placemark>\n      <name>Track Line</name>\n      <styleUrl>#trackStyle</styleUrl>\n      <LineString>\n        <coordinates>\n`;
             trackPoints.forEach(p => {
-                kml += `          ${p.lng},${p.lat},0\n`;
+                xml += `          ${p.lng},${p.lat},${p.alt || 0}\n`;
             });
-
-            kml += `        </coordinates>\n      </LineString>\n    </Placemark>\n`;
-            kml += `  </Document>\n</kml>`;
-
-            downloadFile(kml, generateExportFilename('kml'), 'application/vnd.google-earth.kml+xml');
+            xml += `        </coordinates>\n      </LineString>\n    </Placemark>\n  </Document>\n</kml>`;
+            return xml;
         }
 
-        function downloadFile(content, fileName, mimeType) {
-            const blob = new Blob([content], { type: mimeType });
+        function exportTrack(type) {
+            if (trackPoints.length === 0) {
+                showToast('保存する移動軌跡が記録されていません', 'info');
+                return;
+            }
+            const filename = getExportFilename(type);
+            const content = type === 'gpx' ? generateGpxXml() : generateKmlXml();
+            const mime = type === 'gpx' ? 'application/gpx+xml' : 'application/vnd.google-earth.kml+xml';
+
+            const blob = new Blob([content], { type: mime });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = fileName;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-            showToast(`${fileName} を保存しました`, 'check');
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`${filename} をダウンロードしました`, 'success');
         }
 
-        // Web Share API for Google Drive and Mobile Sharing
-        async function shareTrack() {
+        async function shareTrackFile() {
             if (trackPoints.length === 0) {
-                showToast('共有する移動軌跡がありません', 'info');
+                showToast('共有する移動軌跡が記録されていません', 'info');
                 return;
             }
-            const filename = generateExportFilename('gpx');
-            let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Tracker"><trk><trkseg>\n`;
-            trackPoints.forEach(p => {
-                gpx += `  <trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.time}</time></trkpt>\n`;
-            });
-            gpx += `</trkseg></trk></gpx>`;
-
-            const file = new File([gpx], filename, { type: 'application/gpx+xml' });
+            const filename = getExportFilename('gpx');
+            const gpxXml = generateGpxXml();
+            const file = new File([gpxXml], filename, { type: 'application/gpx+xml' });
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
-                        files: [file],
                         title: 'GPS 軌跡データ',
-                        text: 'GPS トラッカーで記録した移動ログです。'
+                        text: `GPS トラッカーの移動ログ (${filename})`,
+                        files: [file]
                     });
-                    showToast('共有完了', 'check');
-                } catch (err) {
-                    if (err.name !== 'AbortError') {
-                        exportGPX();
-                    }
+                    showToast('共有が完了しました', 'success');
+                } catch (e) {
+                    if (e.name !== 'AbortError') showToast('共有に失敗しました', 'error');
                 }
             } else {
-                // Fallback to direct download
-                exportGPX();
+                exportTrack('gpx');
+                showToast('端末共有がサポートされていないため、直接ダウンロードしました', 'info');
             }
         }
 
-        let toastTimeout = null;
-        function showToast(msg, iconName = 'info') {
-            const toast = document.getElementById('toast');
-            const msgEl = document.getElementById('toast-msg');
-            const iconEl = document.getElementById('toast-icon');
-
-            if (!toast || !msgEl || !iconEl) return;
-
-            msgEl.textContent = msg;
-            iconEl.setAttribute('data-lucide', iconName);
-            lucide.createIcons();
-
-            toast.classList.remove('opacity-0', 'translate-y-20');
-            toast.classList.add('opacity-100', 'translate-y-0');
-
-            if (toastTimeout) clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-y-0');
-                toast.classList.add('opacity-0', 'translate-y-20');
-            }, 3000);
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                } catch (err) {
+                    console.warn('WakeLock warning:', err);
+                }
+            }
         }
 
-        function openModal(title, desc, onConfirm) {
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release().then(() => { wakeLock = null; });
+            }
+        }
+
+        function showConfirm(title, message, onOk) {
             const modal = document.getElementById('confirm-modal');
-            const titleEl = document.getElementById('modal-title');
-            const descEl = document.getElementById('modal-desc');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = message;
+
+            const btnOk = document.getElementById('modal-btn-ok');
+            const btnCancel = document.getElementById('modal-btn-cancel');
+
+            const handleOk = () => {
+                cleanup();
+                onOk();
+            };
+            const handleCancel = () => {
+                cleanup();
+            };
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                btnOk.removeEventListener('click', handleOk);
+                btnCancel.removeEventListener('click', handleCancel);
+            };
+
+            btnOk.addEventListener('click', handleOk);
+            btnCancel.addEventListener('click', handleCancel);
+            modal.classList.remove('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bg = 'bg-slate-900 border-slate-700 text-slate-200';
+            let icon = 'info';
+            if (type === 'success') {
+                bg = 'bg-emerald-950/90 border-emerald-600/70 text-emerald-200';
+                icon = 'check-circle-2';
+            } else if (type === 'error') {
+                bg = 'bg-rose-950/90 border-rose-600/70 text-rose-200';
+                icon = 'alert-triangle';
+            }
+
+            toast.className = `p-3 rounded-xl border shadow-xl backdrop-blur-md flex items-center gap-2.5 text-xs transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto ${bg}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
