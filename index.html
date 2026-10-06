@@ -343,7 +343,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.06-1435</span>
+            <span>v2026.10.06-1445</span>
         </div>
     </aside>
 
@@ -419,7 +419,8 @@
             let trackingStatus = 'stopped'; // 'tracking' | 'paused' | 'stopped'
             let autoFollowMode = true; // Auto center map on current position (Default: ON)
             let watchId = null;
-            let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp}]
+            let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp, newSegment}]
+            let needNewSegment = false; // 次の現在地取得時に前回の最終点と線を結ばず、新しい線を開始するためのフラグ
             let totalDistanceMeters = 0;
             let maxSpeedKmh = 0;
             let elapsedTimeSeconds = 0;
@@ -638,18 +639,31 @@
                 }
             }
 
+            // セグメント分割（マルチポリライン）に対応した軌跡描画：離れた区間同士が一本の線で結ばれません
             function renderTrackOnMap() {
-                const latLngs = trackPoints.map(p => [p.lat, p.lng]);
+                const segments = [];
+                let currentSegment = [];
+
+                trackPoints.forEach((p, idx) => {
+                    if (p.newSegment && currentSegment.length > 0) {
+                        segments.push(currentSegment);
+                        currentSegment = [];
+                    }
+                    currentSegment.push([p.lat, p.lng]);
+                });
+                if (currentSegment.length > 0) {
+                    segments.push(currentSegment);
+                }
 
                 if (!trackPolyline) {
-                    trackPolyline = L.polyline(latLngs, {
+                    trackPolyline = L.polyline(segments, {
                         color: trackStyle.color,
                         weight: trackStyle.weight,
                         opacity: trackStyle.opacity,
                         lineJoin: 'round'
                     }).addTo(map);
                 } else {
-                    trackPolyline.setLatLngs(latLngs);
+                    trackPolyline.setLatLngs(segments);
                     trackPolyline.setStyle({
                         color: trackStyle.color,
                         weight: trackStyle.weight,
@@ -733,6 +747,10 @@
 
             btnToggle.addEventListener('click', () => {
                 if (trackingStatus === 'stopped') {
+                    // 以前の軌跡がある場合は、前回の最終点と直接繋がらないようセグメントを区切る
+                    if (trackPoints.length > 0) {
+                        needNewSegment = true;
+                    }
                     startTracking();
                 } else {
                     stopTracking();
@@ -752,6 +770,9 @@
                     stopTracking();
                 } else {
                     if (trackingStatus !== 'stopped') stopTracking();
+                    if (trackPoints.length > 0) {
+                        needNewSegment = true;
+                    }
                     startDemoSimulation();
                 }
             });
@@ -817,22 +838,39 @@
                 showToast("GPS トラッキングを開始しました", "success");
             }
 
+            // 位置情報処理：GPX最終点などの別区間とは線を結ばず、新しいセグメントとして開始
             function processNewLocation(lat, lng, altitude, accuracy, speed, timestamp) {
                 const curSpeedKmh = (speed && speed > 0) ? speed * 3.6 : 0;
                 if (curSpeedKmh > maxSpeedKmh) maxSpeedKmh = curSpeedKmh;
 
-                const newPoint = { lat, lng, altitude: altitude || 0, accuracy: accuracy || 5, speed: speed || 0, timestamp: timestamp || Date.now() };
+                const isNewSeg = needNewSegment || (trackPoints.length === 0);
+                const newPoint = { 
+                    lat, 
+                    lng, 
+                    altitude: altitude || 0, 
+                    accuracy: accuracy || 5, 
+                    speed: speed || 0, 
+                    timestamp: timestamp || Date.now(),
+                    newSegment: isNewSeg
+                };
 
                 if (trackPoints.length > 0) {
                     const lastPt = trackPoints[trackPoints.length - 1];
                     const dist = L.latLng(lastPt.lat, lastPt.lng).distanceTo(L.latLng(lat, lng));
-                    if (dist > 1.5) { // Minimum delta of 1.5 meters
+
+                    if (isNewSeg) {
+                        // 新しい区間（セグメント）開始：前回のGPX最終点との不自然な直線距離は加算せず、独立してプロット
+                        trackPoints.push(newPoint);
+                        needNewSegment = false;
+                        saveTrackToStorage();
+                    } else if (dist > 1.5) { // 連続移動時の閾値（1.5m以上でプロット）
                         totalDistanceMeters += dist;
                         trackPoints.push(newPoint);
                         saveTrackToStorage();
                     }
                 } else {
                     trackPoints.push(newPoint);
+                    needNewSegment = false;
                     saveTrackToStorage();
                     map.flyTo([lat, lng], 16, { duration: 1 });
                 }
@@ -932,6 +970,7 @@
                 timerInterval = null;
                 trackingStatus = 'stopped';
                 isSimulation = false;
+                needNewSegment = true; // 次回再開時は新しいセグメントとして開始
                 updateControlButtons();
                 updateCurrentLocationMarkerStyle();
                 showToast("トラッキングを停止しました");
@@ -1011,6 +1050,7 @@
             document.getElementById('btn-clear-track').addEventListener('click', () => {
                 showCustomConfirm("保存された移動軌跡をすべて消去してもよろしいですか？", () => {
                     trackPoints = [];
+                    needNewSegment = false;
                     totalDistanceMeters = 0;
                     maxSpeedKmh = 0;
                     elapsedTimeSeconds = 0;
@@ -1055,7 +1095,7 @@
                 return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
             }
 
-            // Export to GPX
+            // Export to GPX (セグメントごとに <trkseg> を分割して正しく出力)
             document.getElementById('btn-export-gpx').addEventListener('click', () => {
                 if (trackPoints.length === 0) {
                     showToast("保存する軌跡データがありません。", "error");
@@ -1065,19 +1105,26 @@
                 const timestampStr = getTrackFormattedTimestamp();
                 let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 gpx += `<gpx version="1.1" creator="GPS KML Navigator" xmlns="http://www.topografix.com/GPX/1/1">\n`;
-                gpx += `  <trk>\n    <name>Track_${timestampStr}</name>\n    <trkseg>\n`;
+                gpx += `  <trk>\n    <name>Track_${timestampStr}</name>\n`;
 
-                trackPoints.forEach(p => {
+                let inSegment = false;
+                trackPoints.forEach((p, idx) => {
+                    if (idx === 0 || p.newSegment) {
+                        if (inSegment) gpx += `    </trkseg>\n`;
+                        gpx += `    <trkseg>\n`;
+                        inSegment = true;
+                    }
                     const timeIso = new Date(p.timestamp).toISOString();
                     gpx += `      <trkpt lat="${p.lat}" lon="${p.lng}"><ele>${p.altitude || 0}</ele><time>${timeIso}</time></trkpt>\n`;
                 });
 
-                gpx += `    </trkseg>\n  </trk>\n</gpx>`;
+                if (inSegment) gpx += `    </trkseg>\n`;
+                gpx += `  </trk>\n</gpx>`;
 
                 downloadBlob(gpx, `track_${timestampStr}.gpx`, 'application/gpx+xml');
             });
 
-            // Export to KML
+            // Export to KML (セグメントごとに LineString を分けてワープ線を防止)
             document.getElementById('btn-export-kml').addEventListener('click', () => {
                 if (trackPoints.length === 0) {
                     showToast("保存する軌跡データがありません。", "error");
@@ -1085,13 +1132,26 @@
                 }
 
                 const timestampStr = getTrackFormattedTimestamp();
-                const coords = trackPoints.map(p => `${p.lng},${p.lat},${p.altitude || 0}`).join(' ');
-
                 let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
                 kml += `  <Document>\n    <name>GPS Track Record ${timestampStr}</name>\n`;
-                kml += `    <Placemark>\n      <name>Track_${timestampStr}</name>\n`;
-                kml += `      <LineString>\n        <coordinates>${coords}</coordinates>\n      </LineString>\n    </Placemark>\n`;
+
+                const segments = [];
+                let curSeg = [];
+                trackPoints.forEach(p => {
+                    if (p.newSegment && curSeg.length > 0) {
+                        segments.push(curSeg);
+                        curSeg = [];
+                    }
+                    curSeg.push(`${p.lng},${p.lat},${p.altitude || 0}`);
+                });
+                if (curSeg.length > 0) segments.push(curSeg);
+
+                segments.forEach((seg, i) => {
+                    kml += `    <Placemark>\n      <name>Track_${timestampStr}_Part${i + 1}</name>\n`;
+                    kml += `      <LineString>\n        <coordinates>${seg.join(' ')}</coordinates>\n      </LineString>\n    </Placemark>\n`;
+                });
+
                 kml += `  </Document>\n</kml>`;
 
                 downloadBlob(kml, `track_${timestampStr}.kml`, 'application/vnd.google-earth.kml+xml');
@@ -1161,7 +1221,7 @@
                 let firstTime = null;
                 let lastTime = null;
 
-                trkpts.forEach((pt) => {
+                trkpts.forEach((pt, index) => {
                     const lat = parseFloat(pt.getAttribute('lat'));
                     const lng = parseFloat(pt.getAttribute('lon'));
                     if (isNaN(lat) || isNaN(lng)) return;
@@ -1210,7 +1270,8 @@
                         altitude,
                         speed: speedMps,
                         accuracy: 5,
-                        timestamp
+                        timestamp,
+                        newSegment: (index === 0) // GPXの先頭ポイントは独立セグメントとして開始
                     });
                 });
 
@@ -1224,6 +1285,9 @@
                 // 既存の軌跡データを消さずにそのまま追加（結合）
                 trackPoints = trackPoints.concat(newPoints);
                 totalDistanceMeters += gpxDist;
+
+                // ★重要：GPX読み込み後、その最終点と新しく取得される現在地が勝手に結ばれないようフラグをセット
+                needNewSegment = true;
 
                 if (gpxMaxSpeed > maxSpeedKmh) {
                     maxSpeedKmh = gpxMaxSpeed;
