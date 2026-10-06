@@ -47,7 +47,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
-        // iPhone / iPad 用のホーム画面アイコンおよびファビコンを動的生成
+        // iPhone / iPad 用のホーム画面アプリアイコンおよびファビコンを動的生成
         (function() {
             try {
                 const canvas = document.createElement('canvas');
@@ -70,7 +70,7 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    // ピンの中央の穴
+                    // ピンの中央ホール
                     ctx.fillStyle = '#059669';
                     ctx.beginPath();
                     ctx.arc(90, 72, 14, 0, Math.PI * 2, true);
@@ -109,24 +109,6 @@
         }
         @keyframes pulse-ring {
             to { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
-        }
-
-        /* KML/KMZ ピンの常時表示ラベル */
-        .kml-pin-label {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 6px;
-            color: #f8fafc;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 7px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            white-space: nowrap;
-            pointer-events: none;
-        }
-        .leaflet-tooltip-top.kml-pin-label:before {
-            border-top-color: rgba(15, 23, 42, 0.88);
         }
     </style>
 </head>
@@ -205,7 +187,6 @@
                     </div>
                 </div>
 
-                <!-- Track Style Settings Accordion -->
                 <div class="mt-3 pt-3 border-t border-slate-700/60">
                     <button id="btn-toggle-track-style" class="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors">
                         <span class="flex items-center gap-1.5">
@@ -253,7 +234,6 @@
                 </div>
             </div>
 
-            <!-- KML / KMZ Upload & Layers -->
             <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-md">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -281,7 +261,6 @@
                 </div>
             </div>
 
-            <!-- Map Layers & Export -->
             <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-md space-y-3">
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -323,21 +302,19 @@
 
         </div>
 
-        <!-- Version Footer -->
         <div class="px-4 py-2 bg-slate-950/90 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono select-none">
             <span class="flex items-center gap-1.5">
                 <i data-lucide="git-commit" class="w-3.5 h-3.5 text-emerald-500"></i>
                 build version
             </span>
-            <span class="text-slate-300 font-semibold">v2026.10.06-1025</span>
+            <span class="text-slate-300 font-semibold">v2026.10.06-0956</span>
         </div>
     </aside>
 
-    <!-- Map Canvas Container -->
     <main class="flex-1 h-full w-full relative">
         <div id="map" class="w-full h-full z-10 bg-slate-950"></div>
 
-        <!-- Floating Button: Show Sidebar (Visible when sidebar collapsed) -->
+        <!-- Floating Button: Show Sidebar -->
         <button id="btn-show-sidebar" class="hidden absolute top-4 left-4 z-20 bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold transition-all">
             <i data-lucide="panel-left-open" class="w-4 h-4 text-emerald-400"></i>
             <span>メニューを表示</span>
@@ -358,7 +335,6 @@
         <div id="toast-container" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col gap-2 w-11/12 sm:w-auto"></div>
     </main>
 
-    <!-- Custom Confirmation Modal (No native confirm/alert) -->
     <div id="confirm-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
             <h3 id="modal-title" class="text-sm font-bold text-white mb-2">確認</h3>
@@ -376,7 +352,7 @@
         const DEFAULT_LNG = 140.3880;
         const DEFAULT_ZOOM = 13;
 
-        // タイル定義（完全無料・APIキー不要）
+        // タイル定義（完全無料・APIキー不要なプロバイダーのみ）
         const TILE_PROVIDERS = {
             gsi_pale: {
                 url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
@@ -414,13 +390,13 @@
         let isTracking = false;
         let watchId = null;
         let wakeLock = null;
-        let autoFollowMode = true; // デフォルトでON
+        let autoFollowMode = true; // デフォルトON
         let trackPoints = []; // [{lat, lng, alt, speed, accuracy, timestamp}]
         let trackPolyline = null;
         let currentMarker = null;
         let maxSpeedKmh = 0;
         let totalDistanceKm = 0;
-        let importedLayers = []; // [{id, name, layer, count, color, weight, opacity}]
+        let importedLayers = []; // [{id, name, layer, count, color, weight, opacity, visible}]
         let demoInterval = null;
 
         // 軌跡スタイル状態（デフォルト: 赤色 #ef4444, 太さ 10px）
@@ -461,7 +437,7 @@
             // ローカルストレージから前回のトラックを復元
             restoreSavedTrack();
 
-            // ユーザーが手動でマップをドラッグ・パンした場合は自動追従を解除
+            // ユーザーが手動でマップをドラッグした場合は自動追従を一時停止
             map.on('dragstart', () => {
                 if (autoFollowMode) {
                     setAutoFollow(false);
@@ -557,12 +533,8 @@
 
             // 軌跡スタイル コントロール
             const colorPicker = document.getElementById('track-color-picker');
-            const lblTrackColor = document.getElementById('lbl-track-color');
-            const stylePreview = document.getElementById('track-style-preview');
-            const sliderWidth = document.getElementById('slider-track-width');
-            const lblWidth = document.getElementById('lbl-track-width');
-            const sliderOpacity = document.getElementById('slider-track-opacity');
-            const lblOpacity = document.getElementById('lbl-track-opacity');
+            sliderWidth = document.getElementById('slider-track-width');
+            sliderOpacity = document.getElementById('slider-track-opacity');
 
             colorPicker.addEventListener('input', (e) => {
                 applyTrackStyle({ color: e.target.value });
@@ -630,7 +602,6 @@
                 return;
             }
 
-            // スリープ防止
             requestWakeLock();
 
             const statusBadge = document.getElementById('gps-status-badge');
@@ -722,7 +693,7 @@
             // 現在地マーカー更新
             updateCurrentMarker(pt.lat, pt.lng);
 
-            // 自動追従が有効なら現在地へ地図を移動
+            // 自動追従が有効なら現在地へスクロール
             if (autoFollowMode) {
                 map.panTo([pt.lat, pt.lng], { animate: true, duration: 0.6 });
             }
@@ -846,7 +817,7 @@
                     maxSpeedKmh
                 }));
             } catch (e) {
-                console.warn('Storage save failed (quota exceeded?)', e);
+                console.warn('Storage save failed', e);
             }
         }
 
@@ -1069,7 +1040,7 @@
                 };
             }
 
-            // GeoJSON レイヤー構築
+            // GeoJSON レイヤー構築（標準的で軽量なサークルマーカーとポップアップ）
             const geoJsonLayer = L.geoJSON(geojson, {
                 style: function(feature) {
                     const st = resolveFeatureStyle(feature);
@@ -1083,30 +1054,14 @@
                 },
                 pointToLayer: function(feature, latlng) {
                     const st = resolveFeatureStyle(feature);
-                    const markerColor = st.color;
-                    const markerRadius = Math.max(5, Math.min(12, st.weight + 2));
-
-                    const marker = L.circleMarker(latlng, {
-                        radius: markerRadius,
-                        fillColor: markerColor,
+                    return L.circleMarker(latlng, {
+                        radius: Math.max(5, Math.min(10, st.weight + 2)),
+                        fillColor: st.color,
                         color: '#ffffff',
                         weight: 2,
                         opacity: 1,
                         fillOpacity: st.opacity
                     });
-
-                    // KML内の地点名称（name）が存在する場合は常時表示ラベルを付与
-                    const pinName = feature.properties?.name;
-                    if (pinName && String(pinName).trim().length > 0) {
-                        marker.bindTooltip(String(pinName).trim(), {
-                            permanent: true,
-                            direction: 'top',
-                            offset: [0, -(markerRadius + 3)],
-                            className: 'kml-pin-label'
-                        });
-                    }
-
-                    return marker;
                 },
                 onEachFeature: function(feature, layer) {
                     if (feature.properties) {
@@ -1145,7 +1100,6 @@
 
         function renderLayerList() {
             const container = document.getElementById('layer-list');
-            const noMsg = document.getElementById('no-layers-msg');
             const countBadge = document.getElementById('layer-count-badge');
 
             countBadge.textContent = `${importedLayers.length} ファイル`;
