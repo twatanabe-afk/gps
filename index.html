@@ -343,7 +343,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.06-1445</span>
+            <span>v2026.10.06-1455</span>
         </div>
     </aside>
 
@@ -421,6 +421,7 @@
             let watchId = null;
             let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp, newSegment}]
             let needNewSegment = false; // 次の現在地取得時に前回の最終点と線を結ばず、新しい線を開始するためのフラグ
+            let userRealLocation = null; // 端末の実際の現在地キャッシュ {lat, lng}
             let totalDistanceMeters = 0;
             let maxSpeedKmh = 0;
             let elapsedTimeSeconds = 0;
@@ -505,6 +506,9 @@
             loadTrackStyle();
             initTrackStyleControls();
             loadSavedTrack();
+
+            // 起動時に端末のリアル現在地を静かに取得して青点マーカーを配置
+            refreshDeviceRealLocation(false);
 
             function loadTrackStyle() {
                 try {
@@ -639,6 +643,34 @@
                 }
             }
 
+            // 端末のリアルな現在地を取得し、青点マーカー（現在地）を更新するヘルパー
+            function refreshDeviceRealLocation(panMap = false) {
+                if (!("geolocation" in navigator)) return;
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        userRealLocation = { lat, lng };
+
+                        // 青点マーカー（停止中）を実際の現在地に正確に配置
+                        updateCurrentLocationMarker(lat, lng);
+
+                        if (panMap && autoFollowMode) {
+                            map.panTo([lat, lng], { animate: true, duration: 0.6 });
+                        }
+                    },
+                    (err) => {
+                        console.warn("Could not retrieve device location:", err.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 5000
+                    }
+                );
+            }
+
             // セグメント分割（マルチポリライン）に対応した軌跡描画：離れた区間同士が一本の線で結ばれません
             function renderTrackOnMap() {
                 const segments = [];
@@ -671,7 +703,10 @@
                     });
                 }
 
-                if (trackPoints.length > 0) {
+                // ★重要：青点マーカーは端末のリアル現在地を最優先で表示（GPXの過去の最終点に上書きされない）
+                if (userRealLocation) {
+                    updateCurrentLocationMarker(userRealLocation.lat, userRealLocation.lng);
+                } else if (trackPoints.length > 0) {
                     const lastPt = trackPoints[trackPoints.length - 1];
                     updateCurrentLocationMarker(lastPt.lat, lastPt.lng);
                 }
@@ -800,6 +835,7 @@
                         (pos) => {
                             const { latitude: lat, longitude: lng, altitude, accuracy, speed } = pos.coords;
                             const timestamp = pos.timestamp;
+                            userRealLocation = { lat, lng };
                             processNewLocation(lat, lng, altitude, accuracy, speed, timestamp);
                         },
                         (err) => {
@@ -840,6 +876,7 @@
 
             // 位置情報処理：GPX最終点などの別区間とは線を結ばず、新しいセグメントとして開始
             function processNewLocation(lat, lng, altitude, accuracy, speed, timestamp) {
+                userRealLocation = { lat, lng };
                 const curSpeedKmh = (speed && speed > 0) ? speed * 3.6 : 0;
                 if (curSpeedKmh > maxSpeedKmh) maxSpeedKmh = curSpeedKmh;
 
@@ -937,6 +974,7 @@
                 trackingStatus = 'paused';
                 updateControlButtons();
                 updateCurrentLocationMarkerStyle();
+                refreshDeviceRealLocation(false);
                 showToast("トラッキングを一時停止しました");
             }
 
@@ -973,6 +1011,7 @@
                 needNewSegment = true; // 次回再開時は新しいセグメントとして開始
                 updateControlButtons();
                 updateCurrentLocationMarkerStyle();
+                refreshDeviceRealLocation(false);
                 showToast("トラッキングを停止しました");
             }
 
@@ -1060,10 +1099,9 @@
                         map.removeLayer(trackPolyline);
                         trackPolyline = null;
                     }
-                    if (currentPositionMarker) {
-                        map.removeLayer(currentPositionMarker);
-                        currentPositionMarker = null;
-                    }
+
+                    // 軌跡消去後も現在地マーカーは保持し、実際の端末位置に更新
+                    refreshDeviceRealLocation(false);
 
                     updateStatsUI();
                     showToast("軌跡データを消去しました");
@@ -1305,10 +1343,14 @@
                 renderTrackOnMap();
                 updateStatsUI(0, 5);
 
+                // 読み込んだ軌跡全体が収まるように地図をズーム
                 const bounds = L.latLngBounds(trackPoints.map(p => [p.lat, p.lng]));
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [40, 40] });
                 }
+
+                // ★改善：GPX読み込み完了後、端末のリアル現在地を即座に取得して青点マーカーを本来の現在地へ配置
+                refreshDeviceRealLocation(false);
 
                 if (prevPointCount > 0) {
                     showToast(`既存の軌跡にGPXを追加しました (+${(gpxDist / 1000).toFixed(2)} km / 計 ${trackPoints.length} 点)`, "success");
@@ -1879,7 +1921,9 @@
                     btnToggleFollowMap.className = "p-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg border border-emerald-400/80 backdrop-blur transition active:scale-95 flex items-center justify-center";
                     if (notify) showToast("現在地自動追従: ON", "success");
 
-                    if (trackPoints.length > 0) {
+                    if (userRealLocation) {
+                        map.panTo([userRealLocation.lat, userRealLocation.lng], { animate: true });
+                    } else if (trackPoints.length > 0) {
                         const lastPt = trackPoints[trackPoints.length - 1];
                         map.panTo([lastPt.lat, lastPt.lng], { animate: true });
                     }
@@ -1910,7 +1954,11 @@
             document.getElementById('btn-locate').addEventListener('click', () => {
                 if ("geolocation" in navigator) {
                     navigator.geolocation.getCurrentPosition(pos => {
-                        map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, { duration: 1 });
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        userRealLocation = { lat, lng };
+                        updateCurrentLocationMarker(lat, lng);
+                        map.flyTo([lat, lng], 16, { duration: 1 });
                     }, err => {
                         showToast("現在地の取得に失敗しました", "error");
                     });
