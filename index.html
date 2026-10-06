@@ -72,6 +72,7 @@
     <!-- Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
 
+    <style id="kml-dynamic-label-styles"></style>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 4px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
@@ -88,21 +89,15 @@
             to { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
         }
 
-        /* KML/KMZ ポイント用常時ラベル */
-        .kml-point-label {
-            background-color: rgba(15, 23, 42, 0.88) !important;
-            border: 1px solid rgba(148, 163, 184, 0.3) !important;
-            color: #f8fafc !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
+        /* 基本のKMLラベルスタイル */
+        .kml-point-label-base {
             padding: 2px 7px !important;
             border-radius: 6px !important;
             white-space: nowrap !important;
+            font-weight: 600 !important;
             box-shadow: 0 3px 6px rgba(0,0,0,0.35) !important;
             pointer-events: none !important;
-        }
-        .kml-point-label::before {
-            border-top-color: rgba(15, 23, 42, 0.88) !important;
+            transition: all 0.15s ease;
         }
     </style>
 </head>
@@ -273,7 +268,7 @@
                         <span>読み込み済みファイル</span>
                         <button id="btn-clear-kml" class="text-rose-400 hover:underline text-[11px]">全削除</button>
                     </div>
-                    <div id="kml-layers-list" class="space-y-1.5 max-h-36 overflow-y-auto"></div>
+                    <div id="kml-layers-list" class="space-y-2 max-h-56 overflow-y-auto"></div>
                 </div>
             </div>
 
@@ -287,7 +282,7 @@
 
         </div>
 
-        <!-- Footer / Map Tile Controls (CartoDB完全除外・完全無料タイルのみ) -->
+        <!-- Footer / Map Tile Controls (CartoDB除外・完全無料タイルのみ) -->
         <div class="p-3 border-t border-slate-800 bg-slate-900/90 text-xs text-slate-400 flex justify-between items-center">
             <span class="flex items-center gap-1.5">
                 <i data-lucide="layers" class="w-3.5 h-3.5"></i> 背景地図（無料）
@@ -313,7 +308,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 build
             </span>
-            <span>v2026.10.06-1045</span>
+            <span>v2026.10.06-1115</span>
         </div>
     </aside>
 
@@ -429,9 +424,8 @@
             const map = L.map('map', { zoomControl: false }).setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // Completely Free Map Background Layers (CartoDB除去済み・APIキー一切不要)
+            // Free Map Background Layers
             const tileLayers = {
-                // 国土地理院 (完全に無料で高精度)
                 'gsi-std': L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
                     maxZoom: 18
@@ -448,7 +442,6 @@
                     attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>',
                     maxZoom: 14
                 }),
-                // OpenStreetMap & OpenTopoMap
                 'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
@@ -457,7 +450,6 @@
                     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>)',
                     maxZoom: 17
                 }),
-                // Esri World Imagery (衛星写真)
                 'esri-sat': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     attribution: 'Tiles &copy; Esri',
                     maxZoom: 18
@@ -476,8 +468,6 @@
 
             loadTrackStyle();
             initTrackStyleControls();
-
-            // Restore saved GPS Track on Startup
             loadSavedTrack();
 
             function loadTrackStyle() {
@@ -1286,6 +1276,16 @@
                     const initialWeight = detectedWeight || 4;
                     const initialOpacity = detectedOpacity !== null ? detectedOpacity : 0.85;
 
+                    const layerId = Date.now() + Math.random();
+
+                    // レイヤーごとのポイントラベル設定
+                    const defaultLabelConfig = {
+                        enabled: true,
+                        fontSize: 11,
+                        textColor: '#f8fafc',
+                        theme: 'dark' // 'dark' | 'light' | 'none'
+                    };
+
                     const geoJsonLayer = L.geoJSON(geojson, {
                         style: function(feature) {
                             const st = resolveFeatureStyle(feature);
@@ -1317,7 +1317,7 @@
                                 marker.bindTooltip(feature.properties.name, {
                                     permanent: true,
                                     direction: 'top',
-                                    className: 'kml-point-label',
+                                    className: `kml-point-label-base kml-layer-label-${Math.floor(layerId)}`,
                                     offset: [0, -markerRadius]
                                 });
                             }
@@ -1336,8 +1336,7 @@
                         }
                     }).addTo(map);
 
-                    const layerId = Date.now() + Math.random();
-                    kmlLayers.push({ 
+                    const layerItem = { 
                         id: layerId, 
                         name: filename, 
                         layer: geoJsonLayer, 
@@ -1345,8 +1344,14 @@
                         styleOpen: false,
                         color: initialColor,
                         weight: initialWeight,
-                        opacity: initialOpacity
-                    });
+                        opacity: initialOpacity,
+                        labelConfig: defaultLabelConfig
+                    };
+
+                    kmlLayers.push(layerItem);
+
+                    // ラベルのCSSルールを適用
+                    rebuildDynamicLabelStyles();
 
                     const bounds = geoJsonLayer.getBounds();
                     if (bounds.isValid()) {
@@ -1354,12 +1359,54 @@
                     }
 
                     renderKmlLayersList();
-                    showToast(`${filename} を読み込みました（スタイル・ラベル適用済）`, "success");
+                    showToast(`${filename} を読み込みました`, "success");
 
                 } catch (err) {
                     console.error("KML Processing Error:", err);
                     showToast(`KMLデータの処理中にエラーが発生しました (${filename})`, "error");
                 }
+            }
+
+            function rebuildDynamicLabelStyles() {
+                const styleSheet = document.getElementById('kml-dynamic-label-styles');
+                if (!styleSheet) return;
+
+                let css = '';
+                kmlLayers.forEach(item => {
+                    const lId = Math.floor(item.id);
+                    const cfg = item.labelConfig;
+                    if (!cfg.enabled) {
+                        css += `
+                            .kml-layer-label-${lId} {
+                                display: none !important;
+                            }
+                        `;
+                    } else {
+                        let bgCss = 'background-color: rgba(15, 23, 42, 0.88) !important; border: 1px solid rgba(148, 163, 184, 0.3) !important;';
+                        let arrowCss = 'border-top-color: rgba(15, 23, 42, 0.88) !important;';
+
+                        if (cfg.theme === 'light') {
+                            bgCss = 'background-color: rgba(255, 255, 255, 0.95) !important; border: 1px solid rgba(100, 116, 139, 0.35) !important; box-shadow: 0 3px 8px rgba(0,0,0,0.2) !important;';
+                            arrowCss = 'border-top-color: rgba(255, 255, 255, 0.95) !important;';
+                        } else if (cfg.theme === 'none') {
+                            bgCss = 'background: transparent !important; border: none !important; box-shadow: none !important; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 4px rgba(0,0,0,0.8) !important;';
+                            arrowCss = 'border-top-color: transparent !important; display: none !important;';
+                        }
+
+                        css += `
+                            .kml-layer-label-${lId} {
+                                display: block !important;
+                                font-size: ${cfg.fontSize}px !important;
+                                color: ${cfg.textColor} !important;
+                                ${bgCss}
+                            }
+                            .kml-layer-label-${lId}::before {
+                                ${arrowCss}
+                            }
+                        `;
+                    }
+                });
+                styleSheet.textContent = css;
             }
 
             function renderKmlLayersList() {
@@ -1376,8 +1423,10 @@
 
                 kmlLayers.forEach(item => {
                     const el = document.createElement('div');
-                    el.className = "p-2 bg-slate-900/80 border border-slate-700/60 rounded-xl text-xs space-y-2";
+                    el.className = "p-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-xs space-y-2.5";
                     
+                    const cfg = item.labelConfig;
+
                     el.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-1.5 truncate pr-2">
@@ -1388,8 +1437,8 @@
                                 <span class="text-slate-200 truncate font-medium ${item.visible ? '' : 'line-through text-slate-500'}">${item.name}</span>
                             </div>
                             <div class="flex items-center space-x-1">
-                                <button onclick="toggleStylePanel(${item.id})" class="p-1.5 rounded-lg ${item.styleOpen ? 'bg-sky-950 text-sky-400 border border-sky-800/60' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} transition" title="スタイル変更">
-                                    <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+                                <button onclick="toggleStylePanel(${item.id})" class="p-1.5 rounded-lg ${item.styleOpen ? 'bg-sky-950 text-sky-400 border border-sky-800/60' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} transition" title="スタイル & ラベル設定">
+                                    <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
                                 </button>
                                 <button onclick="removeKmlLayer(${item.id})" class="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-slate-800 rounded-lg transition" title="削除">
                                     <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -1398,21 +1447,66 @@
                         </div>
 
                         ${item.styleOpen ? `
-                        <div class="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-2 mt-1">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[11px] text-slate-400">表示カラー</span>
-                                <div class="flex items-center space-x-1.5">
-                                    <input type="color" value="${item.color}" onchange="updateLayerStyle(${item.id}, 'color', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
-                                    <span class="text-[10px] text-slate-400 font-mono">${item.color}</span>
+                        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-3 mt-1">
+                            <!-- 軌跡・図形スタイル -->
+                            <div class="space-y-2">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                    <i data-lucide="palette" class="w-3 h-3 text-sky-400"></i>
+                                    図形・ラインのスタイル
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] text-slate-300">表示カラー</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <input type="color" value="${item.color}" onchange="updateLayerStyle(${item.id}, 'color', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                        <span class="text-[10px] text-slate-400 font-mono">${item.color}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-slate-300 flex-shrink-0">線の太さ: <b id="weight-val-${item.id}" class="text-slate-200">${item.weight}px</b></span>
+                                    <input type="range" min="1" max="14" step="1" value="${item.weight}" oninput="updateLayerStyle(${item.id}, 'weight', parseInt(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-slate-300 flex-shrink-0">不透明度: <b id="opacity-val-${item.id}" class="text-slate-200">${Math.round(item.opacity * 100)}%</b></span>
+                                    <input type="range" min="0.1" max="1" step="0.05" value="${item.opacity}" oninput="updateLayerStyle(${item.id}, 'opacity', parseFloat(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-[11px] text-slate-400 flex-shrink-0">線の太さ: <b id="weight-val-${item.id}" class="text-slate-200">${item.weight}px</b></span>
-                                <input type="range" min="1" max="12" step="1" value="${item.weight}" oninput="updateLayerStyle(${item.id}, 'weight', parseInt(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
-                            </div>
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-[11px] text-slate-400 flex-shrink-0">不透明度: <b id="opacity-val-${item.id}" class="text-slate-200">${Math.round(item.opacity * 100)}%</b></span>
-                                <input type="range" min="0.1" max="1" step="0.05" value="${item.opacity}" oninput="updateLayerStyle(${item.id}, 'opacity', parseFloat(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+
+                            <!-- ポイントラベル設定セクション -->
+                            <div class="pt-2 border-t border-slate-800/80 space-y-2.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                        <i data-lucide="tag" class="w-3 h-3 text-amber-400"></i>
+                                        ポイントラベル表示
+                                    </span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" ${cfg.enabled ? 'checked' : ''} onchange="updateLayerLabelConfig(${item.id}, 'enabled', this.checked)" class="sr-only peer">
+                                        <div class="w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+
+                                <div class="${cfg.enabled ? 'space-y-2' : 'hidden'}">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-[11px] text-slate-300 flex-shrink-0">文字サイズ: <b id="label-size-val-${item.id}" class="text-amber-400">${cfg.fontSize}px</b></span>
+                                        <input type="range" min="8" max="18" step="1" value="${cfg.fontSize}" oninput="updateLayerLabelConfig(${item.id}, 'fontSize', parseInt(this.value))" class="w-28 accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                    </div>
+
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] text-slate-300">文字色</span>
+                                        <div class="flex items-center space-x-1.5">
+                                            <input type="color" value="${cfg.textColor}" onchange="updateLayerLabelConfig(${item.id}, 'textColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                            <span class="text-[10px] text-slate-400 font-mono">${cfg.textColor}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-0.5">
+                                        <span class="text-[11px] text-slate-300">背景スタイル</span>
+                                        <div class="inline-flex rounded-lg p-0.5 bg-slate-900 border border-slate-700/60 text-[10px]">
+                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'dark')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'dark' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">暗</button>
+                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'light')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'light' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">明</button>
+                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'none')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'none' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">枠のみ</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         ` : ''}
@@ -1469,6 +1563,21 @@
                 }
             };
 
+            window.updateLayerLabelConfig = function(id, key, val) {
+                const item = kmlLayers.find(l => l.id === id);
+                if (!item) return;
+
+                item.labelConfig[key] = val;
+                rebuildDynamicLabelStyles();
+
+                if (key === 'fontSize') {
+                    const el = document.getElementById(`label-size-val-${id}`);
+                    if (el) el.textContent = `${val}px`;
+                } else {
+                    renderKmlLayersList();
+                }
+            };
+
             window.toggleLayerVisibility = function(id) {
                 const item = kmlLayers.find(l => l.id === id);
                 if (item) {
@@ -1487,6 +1596,7 @@
                 if (idx !== -1) {
                     map.removeLayer(kmlLayers[idx].layer);
                     kmlLayers.splice(idx, 1);
+                    rebuildDynamicLabelStyles();
                     renderKmlLayersList();
                 }
             };
@@ -1494,6 +1604,7 @@
             document.getElementById('btn-clear-kml').addEventListener('click', () => {
                 kmlLayers.forEach(l => map.removeLayer(l.layer));
                 kmlLayers = [];
+                rebuildDynamicLabelStyles();
                 renderKmlLayersList();
             });
 
