@@ -136,7 +136,7 @@
             to { box-shadow: 0 0 0 13px rgba(59, 130, 246, 0); }
         }
 
-        /* 基本のKMLラベルスタイル */
+        /* 基本のKML/GPXラベルスタイル */
         .kml-point-label-base {
             padding: 2px 7px !important;
             border-radius: 6px !important;
@@ -215,26 +215,6 @@
                         <p class="text-[10px] text-slate-400">記録ポイント数</p>
                         <p id="stat-points" class="text-base font-bold text-amber-400">0</p>
                     </div>
-                </div>
-
-                <!-- Smart GPX Import (Open GPX Tracker 連動) - 既存の軌跡を残して追加 -->
-                <div class="pt-0.5">
-                    <label for="gpx-direct-input" class="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-950/80 via-teal-950/80 to-slate-900 border border-emerald-500/60 hover:border-emerald-400 rounded-xl text-xs text-emerald-200 hover:text-white font-medium transition active:scale-[0.98] flex items-center justify-between shadow-sm group cursor-pointer select-none">
-                        <span class="flex items-center gap-2.5">
-                            <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
-                                <i data-lucide="file-plus-2" class="w-4 h-4"></i>
-                            </span>
-                            <span class="font-semibold text-xs text-left">
-                                GPXログを取り込む
-                                <span class="block text-[10px] text-slate-400 font-normal">Open GPX Trackerの記録を軌跡に追加</span>
-                            </span>
-                        </span>
-                        <span class="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 rounded-md font-mono border border-emerald-500/30">
-                            .gpx
-                        </span>
-                    </label>
-                    <!-- iOS Safariでグレーアウトさせないためacceptは全ファイル許可とし、JS側でGPXを判定 -->
-                    <input type="file" id="gpx-direct-input" class="sr-only">
                 </div>
 
                 <!-- Track Line Style Customizer -->
@@ -327,14 +307,14 @@
                         <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-500 group-hover:text-sky-400 transition"></i>
                         <span class="text-xs text-slate-200 font-semibold">ファイルを選択 / ドロップ</span>
                     </div>
-                    <span class="text-[10px] text-slate-400">KML, KMZ, GPX（Open GPX Tracker等）</span>
+                    <span class="text-[10px] text-slate-400">KML, KMZ, GPXファイルに対応</span>
                     <input type="file" id="kml-file-input" class="sr-only" multiple>
                 </label>
 
                 <!-- Loaded Layers List -->
                 <div id="kml-layers-container" class="space-y-2 hidden">
                     <div class="flex justify-between items-center text-xs text-slate-400 border-t border-slate-700/60 pt-2">
-                        <span>読み込み済みファイル</span>
+                        <span>読み込み済み図形・軌跡</span>
                         <button id="btn-clear-kml" class="text-rose-400 hover:underline text-[11px]">全削除</button>
                     </div>
                     <div id="kml-layers-list" class="space-y-2 max-h-56 overflow-y-auto"></div>
@@ -382,7 +362,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.07-1035</span>
+            <span>v2026.10.07-1115</span>
         </div>
     </aside>
 
@@ -459,7 +439,7 @@
             let autoFollowMode = true; // Auto center map on current position (Default: ON)
             let watchId = null;
             let trackPoints = []; // [{lat, lng, altitude, speed, accuracy, timestamp, newSegment}]
-            let needNewSegment = false; // 次の現在地取得時に前回の最終点と線を結ばず、新しい線を開始するためのフラグ
+            let needNewSegment = false;
             let userRealLocation = null; // 端末の実際の現在地キャッシュ {lat, lng}
             let totalDistanceMeters = 0;
             let maxSpeedKmh = 0;
@@ -692,7 +672,6 @@
                         const lng = pos.coords.longitude;
                         userRealLocation = { lat, lng };
 
-                        // 青点マーカー（停止中）を実際の現在地に正確に配置
                         updateCurrentLocationMarker(lat, lng);
 
                         if (panMap && autoFollowMode) {
@@ -710,12 +689,11 @@
                 );
             }
 
-            // セグメント分割（マルチポリライン）に対応した軌跡描画：離れた区間同士が一本の線で結ばれません
             function renderTrackOnMap() {
                 const segments = [];
                 let currentSegment = [];
 
-                trackPoints.forEach((p, idx) => {
+                trackPoints.forEach((p) => {
                     if (p.newSegment && currentSegment.length > 0) {
                         segments.push(currentSegment);
                         currentSegment = [];
@@ -742,7 +720,6 @@
                     });
                 }
 
-                // ★重要：青点マーカーは端末のリアル現在地を最優先で表示（GPXの過去の最終点に上書きされない）
                 if (userRealLocation) {
                     updateCurrentLocationMarker(userRealLocation.lat, userRealLocation.lng);
                 } else if (trackPoints.length > 0) {
@@ -751,7 +728,6 @@
                 }
             }
 
-            // 現在地マーカーの点滅スタイルをステータス（記録中は赤、停止・一時停止は青）に応じて更新
             function updateCurrentLocationMarkerStyle() {
                 if (!currentPositionMarker) return;
                 const dot = currentPositionMarker.getElement()?.querySelector('.pulse-dot-red, .pulse-dot-blue');
@@ -821,7 +797,6 @@
 
             btnToggle.addEventListener('click', () => {
                 if (trackingStatus === 'stopped') {
-                    // 以前の軌跡がある場合は、前回の最終点と直接繋がらないようセグメントを区切る
                     if (trackPoints.length > 0) {
                         needNewSegment = true;
                     }
@@ -913,7 +888,6 @@
                 showToast("GPS トラッキングを開始しました", "success");
             }
 
-            // 位置情報処理：GPX最終点などの別区間とは線を結ばず、新しいセグメントとして開始
             function processNewLocation(lat, lng, altitude, accuracy, speed, timestamp) {
                 userRealLocation = { lat, lng };
                 const curSpeedKmh = (speed && speed > 0) ? speed * 3.6 : 0;
@@ -935,11 +909,10 @@
                     const dist = L.latLng(lastPt.lat, lastPt.lng).distanceTo(L.latLng(lat, lng));
 
                     if (isNewSeg) {
-                        // 新しい区間（セグメント）開始：前回のGPX最終点との不自然な直線距離は加算せず、独立してプロット
                         trackPoints.push(newPoint);
                         needNewSegment = false;
                         saveTrackToStorage();
-                    } else if (dist > 1.5) { // 連続移動時の閾値（1.5m以上でプロット）
+                    } else if (dist > 1.5) {
                         totalDistanceMeters += dist;
                         trackPoints.push(newPoint);
                         saveTrackToStorage();
@@ -1047,7 +1020,7 @@
                 timerInterval = null;
                 trackingStatus = 'stopped';
                 isSimulation = false;
-                needNewSegment = true; // 次回再開時は新しいセグメントとして開始
+                needNewSegment = true;
                 updateControlButtons();
                 updateCurrentLocationMarkerStyle();
                 refreshDeviceRealLocation(false);
@@ -1139,7 +1112,6 @@
                         trackPolyline = null;
                     }
 
-                    // 軌跡消去後も現在地マーカーは保持し、実際の端末位置に更新
                     refreshDeviceRealLocation(false);
 
                     updateStatsUI();
@@ -1172,7 +1144,7 @@
                 return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
             }
 
-            // Export to GPX (セグメントごとに <trkseg> を分割して正しく出力)
+            // Export to GPX
             document.getElementById('btn-export-gpx').addEventListener('click', () => {
                 if (trackPoints.length === 0) {
                     showToast("保存する軌跡データがありません。", "error");
@@ -1201,7 +1173,7 @@
                 downloadBlob(gpx, `track_${timestampStr}.gpx`, 'application/gpx+xml');
             });
 
-            // Export to KML (セグメントごとに LineString を分けてワープ線を防止)
+            // Export to KML
             document.getElementById('btn-export-kml').addEventListener('click', () => {
                 if (trackPoints.length === 0) {
                     showToast("保存する軌跡データがありません。", "error");
@@ -1246,160 +1218,7 @@
             }
 
             // ==========================================
-            // スマート GPX インポート & ログ追加（マージ）機能
-            // ==========================================
-            const gpxDirectInput = document.getElementById('gpx-direct-input');
-
-            gpxDirectInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                    const file = e.target.files[0];
-                    const fname = file.name.toLowerCase();
-                    if (!fname.endsWith('.gpx') && !fname.endsWith('.xml')) {
-                        showToast("選択されたファイルはGPX形式ではありません（.gpxファイルを選択してください）", "error");
-                        gpxDirectInput.value = '';
-                        return;
-                    }
-                    importGpxAsActiveTrack(file);
-                    gpxDirectInput.value = '';
-                }
-            });
-
-            // GPXファイルを解析し、既存の軌跡データを保持したまま追加（マージ）
-            async function importGpxAsActiveTrack(file) {
-                try {
-                    const text = await file.text();
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(text, 'text/xml');
-
-                    if (xml.querySelector('parsererror')) {
-                        showToast(`GPXファイルのパースに失敗しました (${file.name})`, "error");
-                        return;
-                    }
-
-                    const trkpts = xml.querySelectorAll('trkpt');
-                    if (!trkpts || trkpts.length === 0) {
-                        showToast(`GPX内に有効な軌跡ポイント（trkpt）が見つかりませんでした`, "error");
-                        return;
-                    }
-
-                    // 既存の軌跡データを消さずにそのまま追加
-                    applyGpxPointsToTrack(trkpts, file.name);
-
-                } catch (err) {
-                    console.error("GPX Import Error:", err);
-                    showToast(`GPX読み込みエラー: ${err.message}`, "error");
-                }
-            }
-
-            function applyGpxPointsToTrack(trkpts, filename) {
-                const newPoints = [];
-                let gpxDist = 0;
-                let gpxMaxSpeed = 0;
-                let firstTime = null;
-                let lastTime = null;
-
-                trkpts.forEach((pt, index) => {
-                    const lat = parseFloat(pt.getAttribute('lat'));
-                    const lng = parseFloat(pt.getAttribute('lon'));
-                    if (isNaN(lat) || isNaN(lng)) return;
-
-                    const eleEl = pt.querySelector('ele');
-                    const timeEl = pt.querySelector('time');
-                    const speedEl = pt.querySelector('speed');
-
-                    const altitude = eleEl ? parseFloat(eleEl.textContent) : 0;
-                    let timestamp = Date.now();
-                    if (timeEl && timeEl.textContent) {
-                        const parsedTime = new Date(timeEl.textContent).getTime();
-                        if (!isNaN(parsedTime)) {
-                            timestamp = parsedTime;
-                            if (!firstTime) firstTime = parsedTime;
-                            lastTime = parsedTime;
-                        }
-                    }
-
-                    let speedMps = 0;
-                    if (speedEl) {
-                        speedMps = parseFloat(speedEl.textContent) || 0;
-                    }
-
-                    if (newPoints.length > 0) {
-                        const prev = newPoints[newPoints.length - 1];
-                        const d = L.latLng(prev.lat, prev.lng).distanceTo(L.latLng(lat, lng));
-                        gpxDist += d;
-
-                        if (speedMps <= 0 && timestamp > prev.timestamp) {
-                            const dtSec = (timestamp - prev.timestamp) / 1000;
-                            if (dtSec > 0 && dtSec < 60) {
-                                speedMps = d / dtSec;
-                            }
-                        }
-                    }
-
-                    const kmh = speedMps * 3.6;
-                    if (kmh > gpxMaxSpeed && kmh < 250) { // ノイズ除去（250km/h未満）
-                        gpxMaxSpeed = kmh;
-                    }
-
-                    newPoints.push({
-                        lat,
-                        lng,
-                        altitude,
-                        speed: speedMps,
-                        accuracy: 5,
-                        timestamp,
-                        newSegment: (index === 0) // GPXの先頭ポイントは独立セグメントとして開始
-                    });
-                });
-
-                if (newPoints.length === 0) {
-                    showToast("有効なトラックポイントが抽出できませんでした", "error");
-                    return;
-                }
-
-                const prevPointCount = trackPoints.length;
-
-                // 既存の軌跡データを消さずにそのまま追加（結合）
-                trackPoints = trackPoints.concat(newPoints);
-                totalDistanceMeters += gpxDist;
-
-                // ★重要：GPX読み込み後、その最終点と新しく取得される現在地が勝手に結ばれないようフラグをセット
-                needNewSegment = true;
-
-                if (gpxMaxSpeed > maxSpeedKmh) {
-                    maxSpeedKmh = gpxMaxSpeed;
-                }
-
-                if (firstTime && lastTime && lastTime >= firstTime) {
-                    elapsedTimeSeconds += Math.round((lastTime - firstTime) / 1000);
-                }
-
-                if (trackingStatus !== 'stopped') {
-                    stopTracking();
-                }
-
-                saveTrackToStorage();
-                renderTrackOnMap();
-                updateStatsUI(0, 5);
-
-                // 読み込んだ軌跡全体が収まるように地図をズーム
-                const bounds = L.latLngBounds(trackPoints.map(p => [p.lat, p.lng]));
-                if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [40, 40] });
-                }
-
-                // ★改善：GPX読み込み完了後、端末のリアル現在地を即座に取得して青点マーカーを本来の現在地へ配置
-                refreshDeviceRealLocation(false);
-
-                if (prevPointCount > 0) {
-                    showToast(`既存の軌跡にGPXを追加しました (+${(gpxDist / 1000).toFixed(2)} km / 計 ${trackPoints.length} 点)`, "success");
-                } else {
-                    showToast(`GPXを取り込みました（${(gpxDist / 1000).toFixed(2)} km / ${newPoints.length} 点）`, "success");
-                }
-            }
-
-            // ==========================================
-            // KML / KMZ / GPX 汎用ドロップ & 読み込み
+            // KML / KMZ / GPX 汎用ドロップ & 読み込み（すべて図形レイヤーとして追加）
             // ==========================================
             const kmlInput = document.getElementById('kml-file-input');
             const dropZone = document.getElementById('drop-zone');
@@ -1525,7 +1344,14 @@
                 const fileName = file.name.toLowerCase();
 
                 if (fileName.endsWith('.gpx')) {
-                    importGpxAsActiveTrack(file);
+                    // GPXファイルを図形情報（KML/KMZと同等）として読み込み
+                    try {
+                        const text = await file.text();
+                        parseAndRenderGpxText(text, file.name);
+                    } catch (err) {
+                        console.error("GPX Read Error:", err);
+                        showToast(`GPXファイルの読み込みに失敗しました (${file.name})`, "error");
+                    }
                 } else if (fileName.endsWith('.kmz')) {
                     try {
                         const zip = await JSZip.loadAsync(file);
@@ -1561,6 +1387,39 @@
                 }
             }
 
+            // GPXを図形レイヤーとして解析・描画（デフォルトスタイルは軌跡スタイルに合わせる）
+            function parseAndRenderGpxText(xmlText, filename) {
+                try {
+                    const parser = new DOMParser();
+                    const gpxDom = parser.parseFromString(xmlText, 'text/xml');
+
+                    if (gpxDom.querySelector('parsererror')) {
+                        showToast(`GPXパースエラー: ${filename}`, "error");
+                        return;
+                    }
+
+                    // toGeoJSONでGPXをGeoJSONに変換
+                    const geojson = toGeoJSON.gpx(gpxDom);
+
+                    if (!geojson || !geojson.features || geojson.features.length === 0) {
+                        showToast(`有効な位置情報データが見つかりませんでした (${filename})`, "error");
+                        return;
+                    }
+
+                    // GPXの初期スタイルは「軌跡の表示スタイル」に合わせる
+                    const initialColor = trackStyle.color;
+                    const initialWeight = trackStyle.weight;
+                    const initialOpacity = trackStyle.opacity;
+
+                    renderGeoJsonAsLayer(geojson, filename, initialColor, initialWeight, initialOpacity, {});
+                    showToast(`GPX図形「${filename}」を読み込みました`, "success");
+
+                } catch (err) {
+                    console.error("GPX Processing Error:", err);
+                    showToast(`GPXデータの処理中にエラーが発生しました (${filename})`, "error");
+                }
+            }
+
             function parseAndRenderKmlText(xmlText, filename) {
                 try {
                     const parser = new DOMParser();
@@ -1584,13 +1443,11 @@
                     let detectedWeight = null;
                     let detectedOpacity = null;
 
-                    function resolveFeatureStyle(feature) {
-                        const props = feature.properties || {};
+                    for (const feat of geojson.features) {
+                        const props = feat.properties || {};
                         let col = props.stroke || null;
                         let wid = props['stroke-width'] ? parseFloat(props['stroke-width']) : null;
                         let op = props['stroke-opacity'] ? parseFloat(props['stroke-opacity']) : null;
-                        let fCol = props.fill || null;
-                        let fOp = props['fill-opacity'] ? parseFloat(props['fill-opacity']) : null;
 
                         const styleUrl = props.styleUrl;
                         if (styleUrl && customStyles[styleUrl]) {
@@ -1598,24 +1455,11 @@
                             if (!col && def.color) col = def.color;
                             if (!wid && def.width) wid = def.width;
                             if (op === null && def.opacity !== null) op = def.opacity;
-                            if (!fCol && def.fillColor) fCol = def.fillColor;
-                            if (fOp === null && def.fillOpacity !== null) fOp = def.fillOpacity;
                         }
 
-                        return {
-                            color: col,
-                            weight: wid,
-                            opacity: op,
-                            fillColor: fCol || col,
-                            fillOpacity: fOp !== null ? fOp : (op !== null ? op * 0.5 : null)
-                        };
-                    }
-
-                    for (const feat of geojson.features) {
-                        const st = resolveFeatureStyle(feat);
-                        if (!detectedColor && st.color) detectedColor = st.color;
-                        if (!detectedWeight && st.weight) detectedWeight = Math.min(14, Math.max(2, Math.round(st.weight)));
-                        if (detectedOpacity === null && st.opacity !== null) detectedOpacity = st.opacity;
+                        if (!detectedColor && col) detectedColor = col;
+                        if (!detectedWeight && wid) detectedWeight = Math.min(14, Math.max(2, Math.round(wid)));
+                        if (detectedOpacity === null && op !== null) detectedOpacity = op;
                         if (detectedColor && detectedWeight && detectedOpacity !== null) break;
                     }
 
@@ -1623,91 +1467,123 @@
                     const initialWeight = detectedWeight || 4;
                     const initialOpacity = detectedOpacity !== null ? detectedOpacity : 0.85;
 
-                    const layerId = Date.now() + Math.random();
-
-                    const defaultLabelConfig = {
-                        enabled: true,
-                        fontSize: 11,
-                        textColor: '#f8fafc',
-                        theme: 'dark'
-                    };
-
-                    const geoJsonLayer = L.geoJSON(geojson, {
-                        style: function(feature) {
-                            const st = resolveFeatureStyle(feature);
-                            return {
-                                color: st.color || initialColor,
-                                weight: st.weight || initialWeight,
-                                opacity: st.opacity !== null ? st.opacity : initialOpacity,
-                                fillColor: st.fillColor || st.color || initialColor,
-                                fillOpacity: st.fillOpacity !== null ? st.fillOpacity : (initialOpacity * 0.6)
-                            };
-                        },
-                        pointToLayer: function(feature, latlng) {
-                            const st = resolveFeatureStyle(feature);
-                            const markerColor = st.color || initialColor;
-                            const markerOpacity = st.opacity !== null ? st.opacity : initialOpacity;
-                            const markerRadius = Math.max(5, Math.min(12, (st.weight || initialWeight) + 2));
-
-                            const marker = L.circleMarker(latlng, {
-                                radius: markerRadius,
-                                fillColor: markerColor,
-                                color: '#ffffff',
-                                weight: 2,
-                                opacity: 1,
-                                fillOpacity: markerOpacity
-                            });
-
-                            if (feature.properties && feature.properties.name) {
-                                marker.bindTooltip(feature.properties.name, {
-                                    permanent: true,
-                                    direction: 'top',
-                                    className: `kml-point-label-base kml-layer-label-${Math.floor(layerId)}`,
-                                    offset: [0, -markerRadius]
-                                });
-                            }
-
-                            return marker;
-                        },
-                        onEachFeature: function(feature, layer) {
-                            if (feature.properties) {
-                                const props = feature.properties;
-                                let popupHtml = '<div class="p-2 text-slate-800 text-xs space-y-1">';
-                                if (props.name) popupHtml += `<h4 class="font-bold border-b pb-1 text-slate-900">${props.name}</h4>`;
-                                if (props.description) popupHtml += `<p class="text-[11px] text-slate-600 leading-snug">${props.description}</p>`;
-                                popupHtml += '</div>';
-                                layer.bindPopup(popupHtml);
-                            }
-                        }
-                    }).addTo(map);
-
-                    const layerItem = { 
-                        id: layerId, 
-                        name: filename, 
-                        layer: geoJsonLayer, 
-                        visible: true,
-                        styleOpen: false,
-                        color: initialColor,
-                        weight: initialWeight,
-                        opacity: initialOpacity,
-                        labelConfig: defaultLabelConfig
-                    };
-
-                    kmlLayers.push(layerItem);
-                    rebuildDynamicLabelStyles();
-
-                    const bounds = geoJsonLayer.getBounds();
-                    if (bounds.isValid()) {
-                        map.fitBounds(bounds, { padding: [30, 30] });
-                    }
-
-                    renderKmlLayersList();
-                    showToast(`${filename} を読み込みました`, "success");
+                    renderGeoJsonAsLayer(geojson, filename, initialColor, initialWeight, initialOpacity, customStyles);
+                    showToast(`KML「${filename}」を読み込みました`, "success");
 
                 } catch (err) {
                     console.error("KML Processing Error:", err);
                     showToast(`KMLデータの処理中にエラーが発生しました (${filename})`, "error");
                 }
+            }
+
+            // 共通レイヤー生成（KML / KMZ / GPX を統一管理）
+            function renderGeoJsonAsLayer(geojson, filename, initialColor, initialWeight, initialOpacity, customStyles) {
+                const layerId = Date.now() + Math.random();
+
+                const defaultLabelConfig = {
+                    enabled: true,
+                    fontSize: 11,
+                    textColor: '#f8fafc',
+                    theme: 'dark'
+                };
+
+                function resolveFeatureStyle(feature) {
+                    const props = feature.properties || {};
+                    let col = props.stroke || null;
+                    let wid = props['stroke-width'] ? parseFloat(props['stroke-width']) : null;
+                    let op = props['stroke-opacity'] ? parseFloat(props['stroke-opacity']) : null;
+                    let fCol = props.fill || null;
+                    let fOp = props['fill-opacity'] ? parseFloat(props['fill-opacity']) : null;
+
+                    const styleUrl = props.styleUrl;
+                    if (styleUrl && customStyles[styleUrl]) {
+                        const def = customStyles[styleUrl];
+                        if (!col && def.color) col = def.color;
+                        if (!wid && def.width) wid = def.width;
+                        if (op === null && def.opacity !== null) op = def.opacity;
+                        if (!fCol && def.fillColor) fCol = def.fillColor;
+                        if (fOp === null && def.fillOpacity !== null) fOp = def.fillOpacity;
+                    }
+
+                    return {
+                        color: col,
+                        weight: wid,
+                        opacity: op,
+                        fillColor: fCol || col,
+                        fillOpacity: fOp !== null ? fOp : (op !== null ? op * 0.5 : null)
+                    };
+                }
+
+                const geoJsonLayer = L.geoJSON(geojson, {
+                    style: function(feature) {
+                        const st = resolveFeatureStyle(feature);
+                        return {
+                            color: st.color || initialColor,
+                            weight: st.weight || initialWeight,
+                            opacity: st.opacity !== null ? st.opacity : initialOpacity,
+                            fillColor: st.fillColor || st.color || initialColor,
+                            fillOpacity: st.fillOpacity !== null ? st.fillOpacity : (initialOpacity * 0.6)
+                        };
+                    },
+                    pointToLayer: function(feature, latlng) {
+                        const st = resolveFeatureStyle(feature);
+                        const markerColor = st.color || initialColor;
+                        const markerOpacity = st.opacity !== null ? st.opacity : initialOpacity;
+                        const markerRadius = Math.max(5, Math.min(12, (st.weight || initialWeight) + 2));
+
+                        const marker = L.circleMarker(latlng, {
+                            radius: markerRadius,
+                            fillColor: markerColor,
+                            color: '#ffffff',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: markerOpacity
+                        });
+
+                        if (feature.properties && feature.properties.name) {
+                            marker.bindTooltip(feature.properties.name, {
+                                permanent: true,
+                                direction: 'top',
+                                className: `kml-point-label-base kml-layer-label-${Math.floor(layerId)}`,
+                                offset: [0, -markerRadius]
+                            });
+                        }
+
+                        return marker;
+                    },
+                    onEachFeature: function(feature, layer) {
+                        if (feature.properties) {
+                            const props = feature.properties;
+                            let popupHtml = '<div class="p-2 text-slate-800 text-xs space-y-1">';
+                            if (props.name) popupHtml += `<h4 class="font-bold border-b pb-1 text-slate-900">${props.name}</h4>`;
+                            if (props.description) popupHtml += `<p class="text-[11px] text-slate-600 leading-snug">${props.description}</p>`;
+                            popupHtml += '</div>';
+                            layer.bindPopup(popupHtml);
+                        }
+                    }
+                }).addTo(map);
+
+                const layerItem = { 
+                    id: layerId, 
+                    name: filename, 
+                    layer: geoJsonLayer, 
+                    visible: true,
+                    styleOpen: false,
+                    color: initialColor,
+                    weight: initialWeight,
+                    opacity: initialOpacity,
+                    labelConfig: defaultLabelConfig
+                };
+
+                kmlLayers.push(layerItem);
+                rebuildDynamicLabelStyles();
+
+                const bounds = geoJsonLayer.getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                }
+
+                renderKmlLayersList();
             }
 
             function rebuildDynamicLabelStyles() {
