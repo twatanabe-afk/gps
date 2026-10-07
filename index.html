@@ -362,7 +362,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.07-1115</span>
+            <span>v2026.10.07-1125</span>
         </div>
     </aside>
 
@@ -454,6 +454,7 @@
             let trackPolyline = null;
             let currentPositionMarker = null;
             let kmlLayers = [];
+            let layerIdCounter = 1; // 安定したID採番（浮動小数点数の桁落ちを防止）
 
             // Toast Notification Helper
             function showToast(message, type = 'info') {
@@ -1217,9 +1218,6 @@
                 showToast(`${filename} をダウンロードしました`, "success");
             }
 
-            // ==========================================
-            // KML / KMZ / GPX 汎用ドロップ & 読み込み（すべて図形レイヤーとして追加）
-            // ==========================================
             const kmlInput = document.getElementById('kml-file-input');
             const dropZone = document.getElementById('drop-zone');
 
@@ -1344,7 +1342,6 @@
                 const fileName = file.name.toLowerCase();
 
                 if (fileName.endsWith('.gpx')) {
-                    // GPXファイルを図形情報（KML/KMZと同等）として読み込み
                     try {
                         const text = await file.text();
                         parseAndRenderGpxText(text, file.name);
@@ -1398,7 +1395,6 @@
                         return;
                     }
 
-                    // toGeoJSONでGPXをGeoJSONに変換
                     const geojson = toGeoJSON.gpx(gpxDom);
 
                     if (!geojson || !geojson.features || geojson.features.length === 0) {
@@ -1476,9 +1472,9 @@
                 }
             }
 
-            // 共通レイヤー生成（KML / KMZ / GPX を統一管理）
             function renderGeoJsonAsLayer(geojson, filename, initialColor, initialWeight, initialOpacity, customStyles) {
-                const layerId = Date.now() + Math.random();
+                // 文字列ベースの安全な一意IDを生成（浮動小数点の精度落ちバグを解消）
+                const layerId = 'lyr_' + (layerIdCounter++);
 
                 const defaultLabelConfig = {
                     enabled: true,
@@ -1544,7 +1540,7 @@
                             marker.bindTooltip(feature.properties.name, {
                                 permanent: true,
                                 direction: 'top',
-                                className: `kml-point-label-base kml-layer-label-${Math.floor(layerId)}`,
+                                className: `kml-point-label-base kml-layer-label-${layerId}`,
                                 offset: [0, -markerRadius]
                             });
                         }
@@ -1592,7 +1588,7 @@
 
                 let css = '';
                 kmlLayers.forEach(item => {
-                    const lId = Math.floor(item.id);
+                    const lId = item.id;
                     const cfg = item.labelConfig;
                     if (!cfg.enabled) {
                         css += `
@@ -1649,17 +1645,17 @@
                     el.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-1.5 truncate pr-2">
-                                <button onclick="toggleLayerVisibility(${item.id})" class="p-1 text-slate-400 hover:text-sky-400 transition" title="表示/非表示">
+                                <button onclick="toggleLayerVisibility('${item.id}')" class="p-1 text-slate-400 hover:text-sky-400 transition" title="表示/非表示">
                                     <i data-lucide="${item.visible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5 ${item.visible ? 'text-sky-400' : 'text-slate-600'}"></i>
                                 </button>
                                 <span class="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" style="background-color: ${item.color}"></span>
                                 <span class="text-slate-200 truncate font-medium ${item.visible ? '' : 'line-through text-slate-500'}">${item.name}</span>
                             </div>
                             <div class="flex items-center space-x-1">
-                                <button onclick="toggleStylePanel(${item.id})" class="p-1.5 rounded-lg ${item.styleOpen ? 'bg-sky-950 text-sky-400 border border-sky-800/60' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} transition" title="スタイル & ラベル設定">
+                                <button onclick="toggleStylePanel('${item.id}')" class="p-1.5 rounded-lg ${item.styleOpen ? 'bg-sky-950 text-sky-400 border border-sky-800/60' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} transition" title="スタイル & ラベル設定">
                                     <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <button onclick="removeKmlLayer(${item.id})" class="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-slate-800 rounded-lg transition" title="削除">
+                                <button onclick="removeKmlLayer('${item.id}')" class="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-slate-800 rounded-lg transition" title="削除">
                                     <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                 </button>
                             </div>
@@ -1675,17 +1671,17 @@
                                 <div class="flex items-center justify-between">
                                     <span class="text-[11px] text-slate-300">表示カラー</span>
                                     <div class="flex items-center space-x-1.5">
-                                        <input type="color" value="${item.color}" onchange="updateLayerStyle(${item.id}, 'color', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                        <input type="color" value="${item.color}" onchange="updateLayerStyle('${item.id}', 'color', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
                                         <span class="text-[10px] text-slate-400 font-mono">${item.color}</span>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="text-[11px] text-slate-300 flex-shrink-0">線の太さ: <b id="weight-val-${item.id}" class="text-slate-200">${item.weight}px</b></span>
-                                    <input type="range" min="1" max="14" step="1" value="${item.weight}" oninput="updateLayerStyle(${item.id}, 'weight', parseInt(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                    <input type="range" min="1" max="14" step="1" value="${item.weight}" oninput="updateLayerStyle('${item.id}', 'weight', parseInt(this.value, 10))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                                 </div>
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="text-[11px] text-slate-300 flex-shrink-0">不透明度: <b id="opacity-val-${item.id}" class="text-slate-200">${Math.round(item.opacity * 100)}%</b></span>
-                                    <input type="range" min="0.1" max="1" step="0.05" value="${item.opacity}" oninput="updateLayerStyle(${item.id}, 'opacity', parseFloat(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                    <input type="range" min="0.1" max="1" step="0.05" value="${item.opacity}" oninput="updateLayerStyle('${item.id}', 'opacity', parseFloat(this.value))" class="w-28 accent-sky-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                                 </div>
                             </div>
 
@@ -1696,7 +1692,7 @@
                                         ポイントラベル表示
                                     </span>
                                     <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" ${cfg.enabled ? 'checked' : ''} onchange="updateLayerLabelConfig(${item.id}, 'enabled', this.checked)" class="sr-only peer">
+                                        <input type="checkbox" ${cfg.enabled ? 'checked' : ''} onchange="updateLayerLabelConfig('${item.id}', 'enabled', this.checked)" class="sr-only peer">
                                         <div class="w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
                                     </label>
                                 </div>
@@ -1704,13 +1700,13 @@
                                 <div class="${cfg.enabled ? 'space-y-2' : 'hidden'}">
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="text-[11px] text-slate-300 flex-shrink-0">文字サイズ: <b id="label-size-val-${item.id}" class="text-amber-400">${cfg.fontSize}px</b></span>
-                                        <input type="range" min="8" max="18" step="1" value="${cfg.fontSize}" oninput="updateLayerLabelConfig(${item.id}, 'fontSize', parseInt(this.value))" class="w-28 accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                        <input type="range" min="8" max="18" step="1" value="${cfg.fontSize}" oninput="updateLayerLabelConfig('${item.id}', 'fontSize', parseInt(this.value, 10))" class="w-28 accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
                                     </div>
 
                                     <div class="flex items-center justify-between">
                                         <span class="text-[11px] text-slate-300">文字色</span>
                                         <div class="flex items-center space-x-1.5">
-                                            <input type="color" value="${cfg.textColor}" onchange="updateLayerLabelConfig(${item.id}, 'textColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
+                                            <input type="color" value="${cfg.textColor}" onchange="updateLayerLabelConfig('${item.id}', 'textColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0">
                                             <span class="text-[10px] text-slate-400 font-mono">${cfg.textColor}</span>
                                         </div>
                                     </div>
@@ -1718,9 +1714,9 @@
                                     <div class="flex items-center justify-between pt-0.5">
                                         <span class="text-[11px] text-slate-300">背景スタイル</span>
                                         <div class="inline-flex rounded-lg p-0.5 bg-slate-900 border border-slate-700/60 text-[10px]">
-                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'dark')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'dark' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">暗</button>
-                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'light')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'light' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">明</button>
-                                            <button onclick="updateLayerLabelConfig(${item.id}, 'theme', 'none')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'none' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">枠のみ</button>
+                                            <button onclick="updateLayerLabelConfig('${item.id}', 'theme', 'dark')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'dark' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">暗</button>
+                                            <button onclick="updateLayerLabelConfig('${item.id}', 'theme', 'light')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'light' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">明</button>
+                                            <button onclick="updateLayerLabelConfig('${item.id}', 'theme', 'none')" class="px-2 py-0.5 rounded-md transition ${cfg.theme === 'none' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}">枠のみ</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1735,7 +1731,7 @@
             }
 
             window.toggleStylePanel = function(id) {
-                const item = kmlLayers.find(l => l.id === id);
+                const item = kmlLayers.find(l => String(l.id) === String(id));
                 if (item) {
                     item.styleOpen = !item.styleOpen;
                     renderKmlLayersList();
@@ -1743,19 +1739,23 @@
             };
 
             window.updateLayerStyle = function(id, prop, value) {
-                const item = kmlLayers.find(l => l.id === id);
+                const item = kmlLayers.find(l => String(l.id) === String(id));
                 if (!item) return;
 
                 item[prop] = value;
 
-                item.layer.setStyle({
+                const newStyle = {
                     color: item.color,
                     weight: item.weight,
                     opacity: item.opacity,
                     fillColor: item.color,
                     fillOpacity: item.opacity * 0.7
-                });
+                };
 
+                // L.geoJSON 全体にスタイルを適用
+                item.layer.setStyle(newStyle);
+
+                // ポリラインおよびサークルマーカーの個別子レイヤーにも確実に適用
                 item.layer.eachLayer(subLayer => {
                     if (subLayer instanceof L.CircleMarker) {
                         subLayer.setStyle({
@@ -1766,6 +1766,8 @@
                             fillOpacity: item.opacity,
                             radius: Math.max(4, item.weight + 2)
                         });
+                    } else if (subLayer.setStyle) {
+                        subLayer.setStyle(newStyle);
                     }
                 });
 
@@ -1781,7 +1783,7 @@
             };
 
             window.updateLayerLabelConfig = function(id, key, val) {
-                const item = kmlLayers.find(l => l.id === id);
+                const item = kmlLayers.find(l => String(l.id) === String(id));
                 if (!item) return;
 
                 item.labelConfig[key] = val;
@@ -1796,7 +1798,7 @@
             };
 
             window.toggleLayerVisibility = function(id) {
-                const item = kmlLayers.find(l => l.id === id);
+                const item = kmlLayers.find(l => String(l.id) === String(id));
                 if (item) {
                     item.visible = !item.visible;
                     if (item.visible) {
@@ -1809,7 +1811,7 @@
             };
 
             window.removeKmlLayer = function(id) {
-                const idx = kmlLayers.findIndex(l => l.id === id);
+                const idx = kmlLayers.findIndex(l => String(l.id) === String(id));
                 if (idx !== -1) {
                     map.removeLayer(kmlLayers[idx].layer);
                     kmlLayers.splice(idx, 1);
