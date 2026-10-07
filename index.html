@@ -77,6 +77,45 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 9999px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
+        /* 拡大縮小（ズーム）ボタンを右上の現在地ボタンと同等サイズ・デザインにカスタマイズ */
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            margin-right: 16px !important;
+            margin-bottom: 24px !important;
+        }
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+            width: 44px !important;
+            height: 44px !important;
+            line-height: 42px !important;
+            font-size: 22px !important;
+            font-weight: 500 !important;
+            background-color: rgba(15, 23, 42, 0.9) !important;
+            color: #e2e8f0 !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+            backdrop-filter: blur(4px) !important;
+            transition: all 0.15s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .leaflet-control-zoom-in:hover,
+        .leaflet-control-zoom-out:hover {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            border-color: rgba(71, 85, 105, 1) !important;
+        }
+        .leaflet-control-zoom-in:active,
+        .leaflet-control-zoom-out:active {
+            transform: scale(0.95) !important;
+        }
+
         /* 現在地マーカー：赤点滅（記録中） */
         .pulse-dot-red {
             background-color: #ef4444;
@@ -315,7 +354,7 @@
         <!-- Footer / Map Tile Controls (CartoDB除外・完全無料タイルのみ) -->
         <div class="p-3 border-t border-slate-800 bg-slate-900/90 text-xs text-slate-400 flex justify-between items-center">
             <span class="flex items-center gap-1.5">
-                <i data-lucide="layers" class="w-3.5 h-3.5"></i> 背景地図（無料）
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i> 背景地図
             </span>
             <select id="tile-selector" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
                 <optgroup label="国土地理院 (完全無料・APIキー不要)">
@@ -343,7 +382,7 @@
                 <i data-lucide="git-commit" class="w-3 h-3 text-slate-600"></i>
                 <span>build</span>
             </div>
-            <span>v2026.10.06-1455</span>
+            <span>v2026.10.07-1035</span>
         </div>
     </aside>
 
